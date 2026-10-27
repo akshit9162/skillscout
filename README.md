@@ -84,8 +84,8 @@ skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
 | Step | What happens |
 |---|---|
 | **Discover** | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos. Drops archived, stale (no push in a year), unpopular and huge repos. |
-| **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives. Repo code is never run. |
-| **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). |
+| **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
+| **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
 | **Score** | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
@@ -115,7 +115,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | Command | Does |
 |---|---|
 | `skillscout init` | Copy the example profile to `~/.skillscout/profile.toml` |
-| `skillscout discover [--notify]` | Search, scan, score, write the report (`--notify` = macOS notification) |
+| `skillscout discover [--full] [--notify]` | Search, scan, score, write the report. `--full` ignores the caches; `--notify` sends a desktop notification (macOS, or Linux with `notify-send`) |
 | `skillscout list [--all] [-n N]` | Ranked candidates |
 | `skillscout show <id>` | Flags, conflicts and the full SKILL.md |
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
@@ -123,7 +123,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
-Set `GITHUB_TOKEN` for higher API rate limits. It's optional.
+Set `GITHUB_TOKEN` for higher API rate limits (5,000 requests an hour instead of 60). It's optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
 
 ## Limits
 

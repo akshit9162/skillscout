@@ -1,5 +1,6 @@
 """Static safety checks on a skill folder. Flags things to read before installing; it can't prove a skill safe."""
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,6 +76,11 @@ def _scan_file(f: Path) -> list[tuple[str, str, int | None]]:
     return out
 
 
+# Fingerprint of the rules and of what the clone keeps (github.py): a change to either invalidates
+# every cached scan result.
+RULES = hashlib.sha256(b"".join((Path(__file__).parent / f).read_bytes() for f in ("scan.py", "github.py"))).hexdigest()[:12]
+
+
 def scan(skill_dir: Path, repo_root: Path | None = None) -> list[Flag]:
     flags, files = [], 0
     for f in sorted(skill_dir.rglob("*")):
@@ -96,8 +102,9 @@ def scan(skill_dir: Path, repo_root: Path | None = None) -> list[Flag]:
     return flags
 
 
-def worst(flags: list[Flag]) -> str | None:
+def worst(flags: list[Flag] | list[dict]) -> str | None:
+    levels = {f["level"] if isinstance(f, dict) else f.level for f in flags}
     for level in (HIGH, MEDIUM, LOW):
-        if any(f.level == level for f in flags):
+        if level in levels:
             return level
     return None

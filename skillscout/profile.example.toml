@@ -14,6 +14,7 @@ per_query = 30          # repos per query, by stars
 min_stars = 50
 max_age_days = 365      # skip repos with no push in this window
 max_repo_mb = 300       # skip huge repos (trusted ones are always fetched)
+workers = 16            # repos fetched at once; lower it on a slow connection
 
 # Always checked, whatever the search returns.
 trusted = [

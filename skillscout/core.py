@@ -10,8 +10,10 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+import os
+
 from . import github
-from .scan import HIGH, scan, worst
+from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
 from .skill import find_skills, parse_frontmatter
 
@@ -26,6 +28,7 @@ class Paths:
         self.state, self.skills, self.plugins = state, skills, plugins
         self.cache = state / "repos"
         self.candidates = state / "candidates.json"
+        self.repos = state / "repos.json"     # each repo's metadata, push time, checkout and commit at the last run
         self.lock = state / "skills.lock.json"
         self.reports = state / "reports"
 
@@ -65,15 +68,28 @@ def installed_skills(paths: Paths) -> dict[str, str]:
     return out
 
 
-def discover(profile: dict, paths: Paths, fetch=github) -> list[dict]:
-    """Search, clone, scan and score. Writes candidates.json and returns the candidates, best first."""
+def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
+    """Search, clone, scan and score. Writes candidates.json and returns the candidates, best first.
+    Repos with no new pushes aren't fetched and unchanged skills aren't re-scanned, unless `full`."""
     s = profile["search"]
-    repos = {}
+    seen = {} if full else _read(paths.repos, {})
+    repos, failed = {}, False
     for q in s["queries"]:
-        for r in fetch.search(q, s.get("per_query", 30)):
-            repos.setdefault(r["full_name"], r)
+        try:
+            for r in fetch.search(q, s.get("per_query", 30)):
+                repos.setdefault(r["full_name"], r)
+        except Exception as e:                      # a failed search falls back to last run's repos below
+            print(f"search {q!r} failed: {e}")
+            failed = True
     for name in s.get("trusted", []):
-        repos[name] = repos.get(name) or fetch.repo(name)
+        try:
+            repos[name] = repos.get(name) or fetch.repo(name)
+        except Exception as e:
+            print(f"lookup {name} failed: {e}")
+            failed = True
+    if failed:
+        for name, e in seen.items():
+            repos.setdefault(name, e["meta"])
 
     now = datetime.now(timezone.utc)
     trusted = set(s.get("trusted", []))
@@ -84,33 +100,60 @@ def discover(profile: dict, paths: Paths, fetch=github) -> list[dict]:
 
     installed = installed_skills(paths)
     locked = _read(paths.lock, {})
-    previous = {c["id"] for c in _read(paths.candidates, [])}
+    previous = {c["id"]: c for c in _read(paths.candidates, [])}
+    stale = set()           # repos whose refresh failed: don't record their push time, so the next run retries
+    if not os.environ.get("GITHUB_TOKEN"):
+        print("tip: set GITHUB_TOKEN for higher GitHub API limits (5,000 requests an hour instead of 60)")
+
     def pull(r):
+        last = seen.get(r["full_name"])
+        if last and last["meta"]["pushed_at"] == r["pushed_at"] and (Path(last["root"]) / ".git").exists():
+            return r, Path(last["root"]), last["commit"]      # nothing pushed since the last run: no fetch
         try:
             return r, *fetch.sync(r["full_name"], paths.cache)
+        except github.Stale as e:
+            print(f"{r['full_name']}: {e}")
+            stale.add(r["full_name"])
+            return r, e.root, e.commit
         except Exception as e:                      # one bad repo shouldn't stop the run
             print(f"skip {r['full_name']}: {e}")
             return None
 
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=s.get("workers", 16)) as pool:
         synced = [x for x in pool.map(pull, keep) if x]
+    _write(paths.repos, {**seen, **{r["full_name"]: {"meta": r, "root": str(root), "commit": commit}
+                                    for r, root, commit in synced if r["full_name"] not in stale}})
+    print(f"fetched {sum(1 for r, *_ in synced if seen.get(r['full_name'], {}).get('meta', {}).get('pushed_at') != r['pushed_at'])} "
+          f"of {len(synced)} repos; the rest had no new pushes")
 
-    candidates = []
+    candidates, reused = [], 0
     for r, root, commit in synced:
+        try:
+            tree_of = github.trees(root)
+        except Exception:
+            tree_of = {}
+        licensed = any((root / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"))
         for sk in find_skills(root):
             rel, hits = relevance(f"{sk.name} {sk.description}", profile["keywords"])
-            flags = scan(sk.path, root)
             cid = f"{r['full_name']}:{sk.name}"
+            tree = tree_of.get(str(sk.path.relative_to(root)))
+            key = f"{RULES}:{tree}:{int(licensed)}" if tree else None
+            old = previous.get(cid)
+            if key and old and old.get("scan_key") == key and not full:     # same files, same rules: the old result stands
+                flags, reused = old["flags"], reused + 1
+            else:
+                flags = [asdict(f) for f in scan(sk.path, root)]
             candidates.append({
                 "id": cid, "repo": r["full_name"], "name": sk.name, "description": sk.description,
                 "path": str(sk.path.relative_to(root)), "commit": commit, "stars": r["stars"],
                 "license": r["license"], "pushed_at": r["pushed_at"], "trusted": r["full_name"] in trusted,
                 "relevance": round(rel, 3), "matched": hits,
                 "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["full_name"] in trusted),
-                "flags": [asdict(f) for f in flags], "risk": worst(flags),
+                "flags": flags, "risk": worst(flags), "scan_key": key,
                 "conflicts": conflicts(sk.name, sk.description, installed, profile["scoring"]["overlap_at"]),
                 "installed": cid in locked, "new": cid not in previous,
             })
+    print(f"scanned {len(candidates) - reused} skills, reused {reused} unchanged")
     candidates.sort(key=lambda c: c["score"], reverse=True)
     _write(paths.candidates, candidates)
     return candidates

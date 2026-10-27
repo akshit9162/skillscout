@@ -35,7 +35,9 @@ class FakeGitHub:
         self.repos = repos
 
     def _meta(self, name):
-        return {"full_name": name, "stars": self.repos[name][1], "pushed_at": "2026-10-01T00:00:00Z",
+        commits = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=self.repos[name][0],
+                                 capture_output=True, text=True).stdout.strip()
+        return {"full_name": name, "stars": self.repos[name][1], "pushed_at": f"2026-10-{int(commits):02d}T00:00:00Z",
                 "license": "MIT", "archived": False, "description": ""}
 
     def search(self, q, per_page):
@@ -228,3 +230,78 @@ def test_schedule_plans_each_platform(tmp_path):
 
     schedule.write(schedule.plan("linux", exe, state, tmp_path, has_systemd=True)[0])
     assert (tmp_path / ".config/systemd/user/skillscout.timer").exists()
+
+
+def test_unchanged_skills_are_not_rescanned(env, monkeypatch):
+    paths, gh = env
+    calls = []
+    real = core.scan
+    monkeypatch.setattr(core, "scan", lambda d, r=None: calls.append(d.name) or real(d, r))
+    first = core.discover(PROFILE, paths, fetch=gh)
+    n = len(calls)
+    assert n == len(first)
+    calls.clear()
+    again = core.discover(PROFILE, paths, fetch=gh)          # nothing changed upstream
+    assert calls == [] and [c["flags"] for c in again] == [c["flags"] for c in first]
+
+    src = gh.repos["me/good"][0]                              # one skill changes
+    (src / "skills/gst-eval/SKILL.md").write_text(skill_md("gst-eval", "Build an RL environment eval for GST filing in Python", "sudo rm -rf /"))
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "u"], cwd=src, check=True)
+    third = core.discover(PROFILE, paths, fetch=gh)
+    assert calls == ["gst-eval"] and core.find(third, "gst-eval")["risk"] == "high"
+
+    calls.clear()
+    monkeypatch.setattr(core, "RULES", "changed-rules")         # new scanner rules: everything again
+    core.discover(PROFILE, paths, fetch=gh)
+    assert len(calls) == n
+
+
+def test_repos_without_new_pushes_are_not_fetched(env):
+    paths, gh = env
+    synced = []
+    real = gh.sync
+    gh.sync = lambda name, cache: synced.append(name) or real(name, cache)
+    core.discover(PROFILE, paths, fetch=gh)
+    assert sorted(synced) == sorted(gh.repos)
+    synced.clear()
+    core.discover(PROFILE, paths, fetch=gh)                  # nothing pushed
+    assert synced == []
+    src = gh.repos["me/good"][0]
+    (src / "skills/cooking/SKILL.md").write_text(skill_md("cooking", "Recipes for risotto"))
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "u"], cwd=src, check=True)
+    after = core.discover(PROFILE, paths, fetch=gh)
+    assert synced == ["me/good"] and core.find(after, "cooking")["description"] == "Recipes for risotto"
+
+
+def test_failed_search_falls_back_to_last_run(env):
+    paths, gh = env
+    first = core.discover(PROFILE, paths, fetch=gh)
+
+    def down(q, n):
+        raise OSError("rate limit")
+    gh.search = down
+    again = core.discover(PROFILE, paths, fetch=gh)
+    assert {c["id"] for c in again} == {c["id"] for c in first}
+
+
+def test_failed_refresh_is_retried_next_run(env):
+    from skillscout import github
+    paths, gh = env
+    core.discover(PROFILE, paths, fetch=gh)
+    src = gh.repos["me/good"][0]
+    (src / "skills/cooking/SKILL.md").write_text(skill_md("cooking", "Recipes for risotto"))
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "u"], cwd=src, check=True)
+    real = gh.sync
+
+    def flaky(name, cache):
+        root, commit = real(name, cache)
+        raise github.Stale(root, commit)
+    gh.sync = flaky
+    core.discover(PROFILE, paths, fetch=gh)
+    assert "me/good" not in core._read(paths.repos, {}) or core._read(paths.repos, {})["me/good"]["meta"]["pushed_at"] == "2026-10-01T00:00:00Z"
+    gh.sync, synced = (lambda n, c: synced.append(n) or real(n, c)), []
+    core.discover(PROFILE, paths, fetch=gh)
+    assert "me/good" in synced                                # retried, not skipped as "no new pushes"
+    synced.clear()
+    core.discover(PROFILE, paths, fetch=gh, full=True)
+    assert sorted(synced) == sorted(gh.repos)

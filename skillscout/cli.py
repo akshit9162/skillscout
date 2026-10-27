@@ -26,6 +26,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="copy the example profile to ~/.skillscout/profile.toml")
     d = sub.add_parser("discover", help="search GitHub, scan and score skills, write a report")
+    d.add_argument("--full", action="store_true", help="ignore caches: fetch every repo and re-scan every skill")
     d.add_argument("--notify", action="store_true", help="desktop notification with the summary (macOS, or Linux with notify-send)")
     ls = sub.add_parser("list", help="show scored candidates")
     ls.add_argument("--all", action="store_true", help="include zero-relevance skills")
@@ -55,7 +56,7 @@ def main(argv: list[str] | None = None) -> None:
     cands = core._read(paths.candidates, [])
 
     if a.cmd == "discover":
-        cands = core.discover(profile, paths)
+        cands = core.discover(profile, paths, full=a.full)
         out, summary = core.report(cands, profile, paths)
         print(f"{summary}\nreport: {out}")
         if a.notify:

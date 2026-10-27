@@ -4,11 +4,14 @@ import json
 import os
 import subprocess
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 API = "https://api.github.com"
+MAX_WAIT = 120  # seconds to wait out one rate-limit window
+TRIES = 4
 
 
 def _get(path: str) -> dict:
@@ -16,8 +19,18 @@ def _get(path: str) -> dict:
                                                       "User-Agent": "skillscout"})
     if token := os.environ.get("GITHUB_TOKEN"):
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(TRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            limited = e.code == 429 or (e.code == 403 and e.headers.get("X-RateLimit-Remaining") == "0")
+            if not limited or attempt == TRIES - 1:
+                raise
+            reset = e.headers.get("Retry-After") or max(0, int(e.headers.get("X-RateLimit-Reset", 0)) - int(time.time()))
+            wait = min(int(reset) + 1, MAX_WAIT)
+            print(f"GitHub rate limit hit; waiting {wait}s" + ("" if os.environ.get("GITHUB_TOKEN") else " (set GITHUB_TOKEN to avoid this)"))
+            time.sleep(wait)
 
 
 def _repo(d: dict) -> dict:
@@ -61,6 +74,23 @@ def _skill_patterns(dest: Path, ref: str) -> list[str]:
     return ["/LICENSE*", "/COPYING*"] + keep + drop
 
 
+def trees(root: Path) -> dict[str, str]:
+    """Folder path -> git tree hash at HEAD, one git call per repo. A folder's hash changes when any file in it does."""
+    out = {".": git("rev-parse", "HEAD^{tree}", cwd=root)}
+    for line in git("ls-tree", "-r", "-d", "HEAD", cwd=root).splitlines():
+        meta, path = line.split("\t", 1)
+        out[path] = meta.split()[2]
+    return out
+
+
+class Stale(Exception):
+    """The refresh failed; the cached checkout is usable but may be behind upstream."""
+
+    def __init__(self, root: Path, commit: str):
+        super().__init__(f"refresh failed, using the cached copy at {commit[:10]}")
+        self.root, self.commit = root, commit
+
+
 def sync(full_name: str, cache: Path) -> tuple[Path, str]:
     """Sparse, shallow clone (only skill folders are downloaded) or refresh. Returns (path, commit).
     Never runs repo code."""
@@ -72,7 +102,7 @@ def sync(full_name: str, cache: Path) -> tuple[Path, str]:
                 break
             except subprocess.SubprocessError:
                 if attempt:     # refresh failed twice: keep the cached copy rather than dropping the repo
-                    return dest, git("rev-parse", "HEAD", cwd=dest)
+                    raise Stale(dest, git("rev-parse", "HEAD", cwd=dest))
                 time.sleep(3)
         ref = "FETCH_HEAD"
     else:
