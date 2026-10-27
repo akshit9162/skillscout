@@ -2,19 +2,22 @@
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from . import __doc__ as ABOUT, core
+from . import __doc__ as ABOUT, core, schedule
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
-PLIST = Path.home() / "Library" / "LaunchAgents" / "com.skillscout.weekly.plist"
 
 
 def notify(text: str) -> None:
-    subprocess.run(["osascript", "-e", f'display notification "{text}" with title "skillscout"'], check=False)
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        subprocess.run(["osascript", "-e", f'display notification "{text}" with title "skillscout"'], check=False)
+    elif shutil.which("notify-send"):
+        subprocess.run(["notify-send", "skillscout", text], check=False)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -23,7 +26,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="copy the example profile to ~/.skillscout/profile.toml")
     d = sub.add_parser("discover", help="search GitHub, scan and score skills, write a report")
-    d.add_argument("--notify", action="store_true", help="macOS notification with the summary")
+    d.add_argument("--notify", action="store_true", help="desktop notification with the summary (macOS, or Linux with notify-send)")
     ls = sub.add_parser("list", help="show scored candidates")
     ls.add_argument("--all", action="store_true", help="include zero-relevance skills")
     ls.add_argument("-n", type=int, default=30)
@@ -37,7 +40,7 @@ def main(argv: list[str] | None = None) -> None:
     rm.add_argument("id")
     sub.add_parser("installed", help="show pinned skills")
     sub.add_parser("updates", help="diff pinned skills against upstream; applies nothing")
-    sub.add_parser("schedule", help="write a weekly launchd job (you load it)")
+    sub.add_parser("schedule", help="set up weekly discovery for this OS (you turn it on)")
     a = p.parse_args(argv)
 
     paths = core.Paths()
@@ -84,21 +87,9 @@ def main(argv: list[str] | None = None) -> None:
             print(f"\n=== {cid} -> {commit[:10]}\n{diff}")
         print(f"\n{len(found)} pinned skill(s) changed upstream." + (" Re-run `approve <id> --update` after reading the diff." if found else ""))
     elif a.cmd == "schedule":
-        exe = Path(sys.executable)
-        PLIST.parent.mkdir(parents=True, exist_ok=True)
-        PLIST.write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>com.skillscout.weekly</string>
-  <key>ProgramArguments</key><array>
-    <string>{exe}</string><string>-m</string><string>skillscout.cli</string><string>discover</string><string>--notify</string>
-  </array>
-  <key>StartCalendarInterval</key><dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
-  <key>StandardOutPath</key><string>{paths.state}/weekly.log</string>
-  <key>StandardErrorPath</key><string>{paths.state}/weekly.log</string>
-</dict></plist>
-""")
-        print(f"wrote {PLIST}\nturn it on with:  launchctl load {PLIST}\nturn it off with: launchctl unload {PLIST}")
+        files, message = schedule.here(paths.state)
+        schedule.write(files)
+        print(message)
 
 
 if __name__ == "__main__":

@@ -55,6 +55,6 @@ The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedul
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
 | `skillscout installed` / `remove <id>` | Pinned skills / uninstall |
 | `skillscout updates` | Diff pinned skills against upstream |
-| `skillscout schedule` | Write a weekly launchd job (the user loads it) |
+| `skillscout schedule` | Weekly job for this OS: launchd, systemd timer, cron line or schtasks (the user turns it on) |
 
 `<id>` is `owner/repo:skill-name`. The bare skill name works when unique.

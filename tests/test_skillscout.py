@@ -204,3 +204,27 @@ def test_report_lists_only_new_relevant_skills_after_first_run(env):
     text = core.report(core.discover(PROFILE, paths, fetch=gh), PROFILE, paths)[0].read_text()
     new_section = text.split("## New since last run")[1].split("## Recommended")[0]
     assert "me/good:gst-tds" in new_section and "gst-eval" not in new_section
+
+
+def test_schedule_plans_each_platform(tmp_path):
+    from skillscout import schedule
+    exe, state = Path("/opt/py/bin/python3"), tmp_path / "state"
+
+    files, msg = schedule.plan("darwin", exe, state, tmp_path, has_systemd=False)
+    [plist] = files
+    assert plist == tmp_path / "Library/LaunchAgents/com.skillscout.weekly.plist"
+    assert "<string>discover</string>" in files[plist] and "launchctl load" in msg
+
+    files, msg = schedule.plan("linux", exe, state, tmp_path, has_systemd=True)
+    assert {p.name for p in files} == {"skillscout.service", "skillscout.timer"}
+    timer = next(t for p, t in files.items() if p.name == "skillscout.timer")
+    assert "OnCalendar=Mon *-*-* 10:00:00" in timer and "enable --now skillscout.timer" in msg
+
+    files, msg = schedule.plan("linux", exe, state, tmp_path, has_systemd=False)
+    assert files == {} and "0 10 * * 1 /opt/py/bin/python3 -m skillscout.cli discover" in msg
+
+    files, msg = schedule.plan("win32", Path(r"C:\Program Files\Python\python.exe"), state, tmp_path, has_systemd=False)
+    assert files == {} and "schtasks /Create /SC WEEKLY /D MON" in msg and r'\"C:\Program Files' in msg
+
+    schedule.write(schedule.plan("linux", exe, state, tmp_path, has_systemd=True)[0])
+    assert (tmp_path / ".config/systemd/user/skillscout.timer").exists()

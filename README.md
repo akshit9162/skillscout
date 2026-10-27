@@ -40,7 +40,7 @@ and still ask before every install.
 Example session (counts vary week to week):
 
 ```text
-Monday 10:00   skillscout discover --notify     (launchd, weekly)
+Monday 10:00   skillscout discover --notify     (weekly, via schedule)
                → "4 new, 23 recommended, 11 flagged high-risk"
 You            skillscout show github/awesome-copilot:eval-driven-dev
                → flags with file:line, the full SKILL.md, overlaps with what you have
@@ -121,7 +121,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
 | `skillscout installed` · `skillscout remove <id>` | Pinned skills · uninstall |
 | `skillscout updates` | Diff pinned skills against upstream |
-| `skillscout schedule` | Write a weekly launchd job (macOS); you turn it on with `launchctl load` |
+| `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
 Set `GITHUB_TOKEN` for higher API rate limits. It's optional.
 

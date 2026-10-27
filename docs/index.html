@@ -54,7 +54,7 @@
             <button class="key key--primary key--small" type="button" data-copy="cmd-cli">Copy</button>
           </div>
           <p class="visually-hidden" role="status" aria-live="polite" data-copy-status></p>
-          <p class="terms">MIT licence. Python 3.11+, no dependencies. Scheduling uses launchd on macOS; use cron elsewhere.</p>
+          <p class="terms">MIT licence. Python 3.11+, no dependencies. Weekly scheduling built in on macOS, Linux and Windows.</p>
         </div>
       </div>
       <div class="hero__visual">
@@ -95,7 +95,7 @@ report: ~/.skillscout/reports/2026-10-27.md
           <tr><td><code>show &lt;id&gt;</code></td><td>Every flag with file and line, the full SKILL.md, overlaps.</td></tr>
           <tr><td><code>approve &lt;id&gt;</code></td><td>Copies that one skill, drops symlinks, pins the commit and a content hash.</td></tr>
           <tr><td><code>updates</code></td><td>Diffs each pinned skill against upstream. Nothing is applied.</td></tr>
-          <tr><td><code>schedule</code></td><td>Writes a weekly launchd job, which you load yourself.</td></tr>
+          <tr><td><code>schedule</code></td><td>Sets up a weekly job for your OS. You turn it on with one command.</td></tr>
         </tbody>
       </table>
     </div>
