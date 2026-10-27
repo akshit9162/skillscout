@@ -5,13 +5,13 @@
     "url": "https://github.com/akshit9162"
   },
   "metadata": {
-    "description": "Find, vet and install agent skills from GitHub."
+    "description": "Keep your agent's skills current, safely."
   },
   "plugins": [
     {
       "name": "skillscout",
       "source": "./",
-      "description": "Find, rank and safety-check agent skills on GitHub; install only what you approve, pinned to a commit.",
+      "description": "AI tooling moves weekly. Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, and installs pinned to a commit.",
       "version": "0.1.0",
       "author": {
         "name": "akshit9162",

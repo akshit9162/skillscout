@@ -127,8 +127,16 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
     flagged = [c for c in candidates if c["risk"] == HIGH and c["relevance"] > 0]
     new = [c for c in candidates if c["new"]]
     summary = f"{len(new)} new, {len(rec)} recommended, {len(flagged)} flagged high-risk"
-    lines = [f"# Skill report {datetime.now():%Y-%m-%d}", "", summary, "",
-             "## Recommended", "", "| Score | Skill | Stars | Risk | Matched | Why |", "|---|---|---|---|---|---|"]
+    lines = [f"# Skill report {datetime.now():%Y-%m-%d}", "", summary, "", "## New since last run", ""]
+    fresh = [c for c in rec if c["new"]]
+    if new and len(new) == len(candidates):
+        lines.append("First run: everything is new. From the next run, this section lists only what appeared since.")
+    elif fresh:
+        lines += [f"- **`{c['id']}`** ({c['stars']}★, score {c['score']:.2f}): {c['description'][:140]}" for c in fresh[:top]]
+    else:
+        lines.append("Nothing new that fits your profile.")
+    lines += ["", "Run `skillscout updates` to see what changed in the skills you already have.", "",
+              "## Recommended", "", "| Score | Skill | Stars | Risk | Matched | Why |", "|---|---|---|---|---|---|"]
     for c in rec[:top]:
         lines.append(f"| {c['score']:.2f} | `{c['id']}`{' 🆕' if c['new'] else ''} | {c['stars']} | {c['risk'] or 'none'} "
                      f"| {', '.join(c['matched'][:4])} | {c['description'][:110]} |")

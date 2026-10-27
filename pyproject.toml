@@ -1,7 +1,7 @@
 [project]
 name = "skillscout"
 version = "0.1.0"
-description = "Find, rank and safety-check agent skills on GitHub; install only what you approve"
+description = "Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, pinned installs"
 requires-python = ">=3.11"
 
 [project.optional-dependencies]

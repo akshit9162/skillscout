@@ -1,6 +1,6 @@
 ---
 name: skillscout
-description: Find, vet and install agent skills from GitHub with the skillscout CLI. Use when the user asks to find new skills, recommend skills for their work, check whether a skill or plugin is safe, install or update a skill from GitHub, or audit the skills they already have. Never install a skill without showing the user its flags and contents first.
+description: Keep the user's agent skills current with the skillscout CLI. Use when the user asks what's new in AI tooling or agent skills, wants to keep up with or catch up on new skills and plugins, wants skills recommended for their work, asks whether their installed skills changed upstream or are out of date, wants to check whether a skill or plugin is safe, or wants to install or update a skill from GitHub. Never install a skill without showing the user its flags and contents first.
 ---
 
 # skillscout
@@ -22,6 +22,8 @@ Ask the user what they work on and put those words in `[keywords]` of `~/.skills
 before the first `discover`. The search only finds what the keywords describe.
 
 ## Workflow
+
+The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedule` so discovery runs every week, and lead every summary with what is new since the last run.
 
 1. `skillscout discover` searches, clones (skill folders only), scans and scores, and writes
    `~/.skillscout/reports/<date>.md`. It takes a few minutes the first time, so run it in the background.

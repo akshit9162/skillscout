@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import core
+from . import __doc__ as ABOUT, core
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
@@ -18,7 +18,7 @@ def notify(text: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = argparse.ArgumentParser(prog="skillscout", description=__doc__)
+    p = argparse.ArgumentParser(prog="skillscout", description=ABOUT)
     p.add_argument("--profile", type=Path, default=None, help="default: ~/.skillscout/profile.toml, else the example")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="copy the example profile to ~/.skillscout/profile.toml")

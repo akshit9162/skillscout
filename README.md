@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="docs/assets/header.svg" width="760" alt="skillscout: find agent skills, flag the unsafe ones, install only what you approve" />
+  <img src="docs/assets/header.svg" width="760" alt="skillscout: keep your agent's skills current, safely" />
 </p>
 
 <p align="center">
   <a href="https://akshit9162.github.io/skillscout">Website</a> &ensp;·&ensp;
   <a href="#install">Install</a> &ensp;·&ensp;
+  <a href="#a-week-with-skillscout">A week with it</a> &ensp;·&ensp;
   <a href="#how-it-works">How it works</a> &ensp;·&ensp;
   <a href="#what-gets-flagged">What gets flagged</a>
 </p>
@@ -16,18 +17,37 @@
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen.svg" alt="No dependencies" />
 </p>
 
-There are thousands of agent skills on GitHub now, and a skill is a set of instructions your coding agent follows
-**with your permissions**. Installing one you haven't read is like piping a stranger's script into your shell.
+AI tooling moves weekly. New skills, plugins and agent workflows land on GitHub every day, the ones you
+installed keep changing upstream, and last month's best practice is already stale. Nobody has time to
+watch hundreds of repos.
 
-**skillscout** finds the skills worth having for *your* work, flags the ones that do something dangerous,
-and installs only the ones you approve, each pinned to an exact commit. Updates are shown as a diff and
-re-scanned before they can replace what you installed.
+**skillscout keeps your agent current.** Once a week it checks the skill ecosystem against what *you*
+work on, tells you what's new and worth having, and shows you exactly what changed in the skills you
+already use.
 
-In one run over the public ecosystem it scanned **95 repos and 6,726 skills**: 198 had at least one high-risk
-flag (mostly `sudo` and `curl | sh` install steps, plus prompt-injection-style text and hidden Unicode).
+Keeping up fast is only useful if it's safe. A skill is a set of instructions your agent follows
+**with your permissions**, so skillscout scans every file for dangerous patterns, installs nothing without
+your approval, pins each install to an exact commit, and re-scans every update before it can replace anything.
+
+In one run over the public ecosystem it found **6,726 skills in 95 repos**. 198 had at least one high-risk flag,
+mostly `sudo` and `curl | sh` install steps, plus prompt-injection-style text and hidden Unicode.
 
 It's a zero-dependency Python CLI, and it also ships as a skill, so your agent can run the whole loop for you
 and still ask before every install.
+
+## A week with skillscout
+
+Example session (counts vary week to week):
+
+```text
+Monday 10:00   skillscout discover --notify     (launchd, weekly)
+               → "4 new, 23 recommended, 11 flagged high-risk"
+You            skillscout show github/awesome-copilot:eval-driven-dev
+               → flags with file:line, the full SKILL.md, overlaps with what you have
+You            skillscout approve eval-driven-dev   → copied, pinned to its commit
+Later          skillscout updates               → upstream changed it; here's the diff
+You            skillscout approve eval-driven-dev --update   → re-scanned, then replaced
+```
 
 ## Install
 
@@ -68,7 +88,7 @@ skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). |
 | **Score** | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
-| **Report** | Recommended skills, plus relevant ones that are blocked and why. |
+| **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
 | **Approve** | You pick one. It's copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
 | **Update** | `skillscout updates` diffs each pinned skill against upstream and applies nothing. Taking an update re-runs the scan. |
 
