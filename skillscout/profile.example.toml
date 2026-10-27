@@ -1,0 +1,40 @@
+# skillscout profile. `skillscout init` copies this to ~/.skillscout/profile.toml; edit that copy.
+# Keyword weights say how much a match matters. Replace them with words from your own work.
+
+[search]
+# GitHub repository-search queries, run on every `skillscout discover`.
+queries = [
+  "topic:claude-skills",
+  "topic:agent-skills",
+  "topic:claude-code-skills",
+  "topic:claude-code-plugin",
+  "\"SKILL.md\" claude in:readme",
+]
+per_query = 30          # repos per query, by stars
+min_stars = 50
+max_age_days = 365      # skip repos with no push in this window
+max_repo_mb = 300       # skip huge repos (trusted ones are always fetched)
+
+# Always checked, whatever the search returns.
+trusted = [
+  "anthropics/skills",
+  "obra/superpowers",
+]
+
+[keywords]
+"python" = 2
+"typescript" = 2
+"react" = 2
+"testing" = 2
+"debugging" = 2
+"code review" = 2
+"documentation" = 1
+"api" = 1
+"database" = 1
+"security" = 1
+"design" = 1
+
+[scoring]
+recommend_at = 0.45     # combined score needed to be recommended
+min_relevance = 0.3     # and at least this much keyword overlap with your work
+overlap_at = 0.35       # description similarity that counts as a conflict with an installed skill

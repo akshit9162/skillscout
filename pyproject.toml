@@ -1,0 +1,17 @@
+[project]
+name = "skillscout"
+version = "0.1.0"
+description = "Find, rank and safety-check agent skills on GitHub; install only what you approve"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+skillscout = "skillscout.cli:main"
+
+[tool.setuptools]
+packages = ["skillscout"]
+
+[tool.setuptools.package-data]
+skillscout = ["profile.example.toml"]

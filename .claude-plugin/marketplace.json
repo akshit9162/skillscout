@@ -1,0 +1,26 @@
+{
+  "name": "skillscout",
+  "owner": {
+    "name": "akshit9162",
+    "url": "https://github.com/akshit9162"
+  },
+  "metadata": {
+    "description": "Find, vet and install agent skills from GitHub."
+  },
+  "plugins": [
+    {
+      "name": "skillscout",
+      "source": "./",
+      "description": "Find, rank and safety-check agent skills on GitHub; install only what you approve, pinned to a commit.",
+      "version": "0.1.0",
+      "author": {
+        "name": "akshit9162",
+        "url": "https://github.com/akshit9162"
+      },
+      "homepage": "https://akshit9162.github.io/skillscout",
+      "repository": "https://github.com/akshit9162/skillscout",
+      "license": "MIT",
+      "category": "security"
+    }
+  ]
+}

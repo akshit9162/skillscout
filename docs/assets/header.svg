@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 220" width="880" height="220" role="img" aria-label="skillscout: find agent skills, flag the unsafe ones, install only what you approve">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#151b33"/>
+    </linearGradient>
+  </defs>
+  <rect width="880" height="220" rx="20" fill="url(#bg)"/>
+  <!-- lens -->
+  <circle cx="132" cy="104" r="46" fill="none" stroke="#818cf8" stroke-width="10"/>
+  <line x1="166" y1="138" x2="204" y2="176" stroke="#818cf8" stroke-width="14" stroke-linecap="round"/>
+  <path d="M112 104 l14 14 l26 -28" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="250" y="104" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="58" font-weight="800" fill="#eef1f6" letter-spacing="-1.5">skillscout</text>
+  <text x="252" y="146" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="21" fill="#97a1b3">Find agent skills. Flag the unsafe ones. Install only what you approve.</text>
+  <g font-family="JetBrains Mono, Menlo, monospace" font-size="14">
+    <rect x="252" y="166" width="96" height="26" rx="13" fill="rgba(52,211,153,.16)"/>
+    <text x="300" y="184" text-anchor="middle" fill="#34d399">discover</text>
+    <rect x="358" y="166" width="70" height="26" rx="13" fill="rgba(251,191,36,.16)"/>
+    <text x="393" y="184" text-anchor="middle" fill="#fbbf24">scan</text>
+    <rect x="438" y="166" width="86" height="26" rx="13" fill="rgba(129,140,248,.18)"/>
+    <text x="481" y="184" text-anchor="middle" fill="#a5b4fc">approve</text>
+    <rect x="534" y="166" width="70" height="26" rx="13" fill="rgba(251,113,133,.16)"/>
+    <text x="569" y="184" text-anchor="middle" fill="#fb7185">pin</text>
+  </g>
+</svg>
