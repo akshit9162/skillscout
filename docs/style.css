@@ -59,9 +59,12 @@ html:not(.js) .tabs { display: none; }
 .hero__actions { display: grid; gap: var(--space-sm); width: 100%; max-width: 34rem; }
 .hero__row { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 .terms { font-size: var(--text-sm); color: var(--color-muted); }
-.field-toggle { position: absolute; right: var(--gutter); bottom: var(--space-md); min-height: 44px; padding: 0 var(--space-xs); border: 0; background: none; color: var(--color-muted); font: 500 var(--text-sm)/1 var(--font-display); text-decoration: underline; text-decoration-color: var(--color-rule-2); text-underline-offset: 0.2em; cursor: pointer; }
-.field-toggle:hover { color: var(--color-ink); text-decoration-color: var(--color-accent); }
-.field-toggle:active { color: var(--color-accent); }
+.field-toggle { position: absolute; right: var(--gutter); bottom: var(--space-md); display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-input); background: transparent; color: var(--color-muted); cursor: pointer; opacity: 0.7; transition: opacity var(--dur-short) var(--ease-out), background-color var(--dur-short) var(--ease-out); }
+.field-toggle:hover { opacity: 1; background: var(--color-paper-2); color: var(--color-ink); }
+.field-toggle:active { background: var(--color-paper-3); }
+.field-toggle:focus-visible { opacity: 1; outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.field-toggle .i-play, .field-toggle[aria-pressed="true"] .i-pause { display: none; }
+.field-toggle[aria-pressed="true"] .i-play { display: block; }
 html:not(.js) .field-toggle { display: none; }
 @media (prefers-reduced-motion: reduce) { .field-toggle { display: none; } }
 @media (max-width: 60rem) { .hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-xl); min-height: 0; padding-block: var(--space-2xl) var(--space-3xl); } }

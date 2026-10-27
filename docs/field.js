@@ -1,5 +1,5 @@
-// The hero field: skill text on the left, dense and unread, thinning to the right where
-// each row resolves into a pinned id. Characters snap to the theme's 8 by 16 cell.
+// The hero field: unread skill text, dense on the left and thinning to the right.
+// Characters snap to the theme's 8 by 16 cell.
 (() => {
   const hero = document.querySelector('.hero');
   const canvas = hero && hero.querySelector('.field');
@@ -10,7 +10,6 @@
   const font = css.getPropertyValue('--font-outlier').trim();
   const RAMP = ' .:-=+*#%@';
   const WORDS = ['name:', 'description:', 'curl', '|', 'sh', 'sudo', 'rm', '-rf', '~/.ssh', 'SKILL.md', 'hooks.json', 'allowed-tools:'];
-  const PINS = ['@f1f498bd7d', 'sha256:9c1e', 'pinned', 'scanned: none', 'approve', 'low'];
   const CW = 8, CH = 16, CALM = 16;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let w = 0, h = 0, cols = 0, rows = 0, t = 0, last = 0, raf = 0, running = false;
@@ -75,11 +74,6 @@
         ctx.fillStyle = tint[Math.min(tint.length - 1, Math.floor(n * tint.length))];
         ctx.fillText(ch, x, y);
       }
-      if (r % 9 === 4) {
-        const label = PINS[(r / 9 | 0) % PINS.length];
-        const x = Math.floor((w * 0.94 - label.length * CW) / CW) * CW, y = r * CH;
-        if (calm(x, y) === 1 && calm(x + label.length * CW, y) === 1) { ctx.fillStyle = tint[3]; ctx.fillText(label, x, y); }
-      }
     }
   };
 
@@ -96,8 +90,8 @@
     if (run && !running) { running = true; raf = requestAnimationFrame(tick); }
     if (!run && running) { running = false; cancelAnimationFrame(raf); }
     if (btn) {
-      btn.textContent = state.held ? 'Play' : 'Pause';
-      btn.setAttribute('aria-label', state.held ? 'Play animation' : 'Pause animation');
+      btn.setAttribute('aria-pressed', state.held);
+      btn.setAttribute('aria-label', state.held ? 'Play background animation' : 'Pause background animation');
     }
   };
   btn && btn.addEventListener('click', () => { state.held = !state.held; sync(); });

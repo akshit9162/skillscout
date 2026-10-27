@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -76,7 +76,10 @@ report: ~/.skillscout/reports/2026-10-27.md
       <p class="caption">Score: fit to your keywords, stars, freshness. REC: worth installing. High: a line to read first, like <code>sudo</code> in an install guide. 89 among this profile’s matches, 198 in all.</p>
       </div>
     </div>
-    <button class="field-toggle" type="button" data-loop-toggle aria-label="Pause animation">Pause</button>
+    <button class="field-toggle" type="button" data-loop-toggle aria-label="Pause background animation" aria-pressed="false">
+      <svg class="i-pause" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      <svg class="i-play" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5 3.5l7 4.5-7 4.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>
+    </button>
   </section>
 
   <section id="week" aria-labelledby="week-title">
@@ -181,6 +184,6 @@ skillscout show &lt;id&gt;</code></pre>
   </div>
 </footer>
 
-<script src="field.js" defer></script>
+<script src="field.js?v=3" defer></script>
 </body>
 </html>
