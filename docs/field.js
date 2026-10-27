@@ -11,7 +11,7 @@
   const RAMP = ' .:-=+*#%@';
   const WORDS = ['name:', 'description:', 'curl', '|', 'sh', 'sudo', 'rm', '-rf', '~/.ssh', 'SKILL.md', 'hooks.json', 'allowed-tools:'];
   const PINS = ['@f1f498bd7d', 'sha256:9c1e', 'pinned', 'scanned: none', 'approve', 'low'];
-  const CW = 8, CH = 16, CALM = 96;
+  const CW = 8, CH = 16, CALM = 16;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let w = 0, h = 0, cols = 0, rows = 0, t = 0, last = 0, raf = 0, running = false;
 
