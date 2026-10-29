@@ -328,3 +328,20 @@ def test_discover_follows_awesome_lists(env, tmp_path):
     assert not any(i.startswith("me/missing") for i in ids)   # a dead link is skipped
     off = {**PROFILE, "search": {**PROFILE["search"], "follow_lists": False}}
     assert "me/linked:gst-linked" not in {c["id"] for c in core.discover(off, paths, fetch=gh)}
+
+
+def test_list_lookups_rotate_and_share_across_lists(env, tmp_path):
+    paths, gh = env
+    for n in ("a1", "a2", "b1"):
+        src = tmp_path / "src" / n
+        make_repo(src, {"LICENSE": "MIT", f"skills/gst-{n}/SKILL.md": skill_md(f"gst-{n}", "GST eval in Python")})
+        gh.repos[f"me/{n}"] = (src, 300)
+    gh.repos["me/awesome-a"] = gh.repos["me/awesome-b"] = (tmp_path / "src" / "a1", 300)
+    gh.search = lambda q, per_page: [gh._meta(n) for n in ("me/good", "me/bad", "me/awesome-a", "me/awesome-b")]
+    gh.readme = lambda name: {"me/awesome-a": "https://github.com/me/a1 https://github.com/me/a2",
+                              "me/awesome-b": "https://github.com/me/b1"}[name]
+    one = {**PROFILE, "search": {**PROFILE["search"], "max_list_repos": 2}}
+    first = {c["repo"] for c in core.discover(one, paths, fetch=gh)}
+    assert {"me/a1", "me/b1"} <= first and "me/a2" not in first    # one from each list, not two from the first
+    second = {c["repo"] for c in core.discover(one, paths, fetch=gh)}
+    assert {"me/a1", "me/a2", "me/b1"} <= second                    # a2's turn; earlier finds are kept

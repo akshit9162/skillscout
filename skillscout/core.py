@@ -68,26 +68,33 @@ def installed_skills(paths: Paths) -> dict[str, str]:
     return out
 
 
-def follow_lists(repos: dict, s: dict, fetch=github) -> dict:
+def follow_lists(repos: dict, s: dict, fetch=github, paths: "Paths | None" = None, seen: dict | None = None) -> dict:
     """Repos linked from curated lists: the profile's `lists` plus any found repo named awesome-*.
-    Each link costs one API lookup, so at most `max_list_repos` are looked up per run; the same filters
-    (stars, freshness, size) then apply as to search results."""
+    Each link costs one API lookup, so at most `max_list_repos` are looked up per run: links never looked
+    up go first, then the longest unchecked, taking turns across lists so each gets a share. Repos found
+    through a list on an earlier run stay in, from the cache, until their turn comes round again.
+    The same filters (stars, freshness, size) then apply as to search results."""
     if not s.get("follow_lists", True) or not hasattr(fetch, "readme"):
         return {}
     lists = set(s.get("lists", [])) | {n for n in repos if "awesome" in n.split("/")[-1].lower()}
     known = {n.lower() for n in repos}
-    names, via = [], {}
+    per_list, via = [], {}
     for lst in sorted(lists):
         try:
             text = fetch.readme(lst)
         except Exception as e:
             print(f"list {lst}: {e}")
             continue
-        for n in github.linked_repos(text):
-            if n.lower() not in known and n.lower() != lst.lower() and n not in via:
-                names.append(n)
-                via[n] = lst
-    cap = s.get("max_list_repos", 300 if github.token() else 40)
+        links = [n for n in github.linked_repos(text) if n.lower() not in known and n.lower() != lst.lower()]
+        per_list.append([n for n in links if n not in via])
+        for n in links:
+            via.setdefault(n, lst)
+    names = [n for group in _interleave(per_list) for n in group]
+    state = paths.state / "lists.json" if paths else None
+    checked = _read(state, {}) if state else {}
+    names.sort(key=lambda n: checked.get(n, ""))       # never looked up ("") first, then the oldest
+    cap = s.get("max_list_repos", 1500 if github.token() else 40)
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def look(n):
         try:
@@ -97,10 +104,28 @@ def follow_lists(repos: dict, s: dict, fetch=github) -> dict:
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         found = [r for r in pool.map(look, names[:cap]) if r]
+    if state:
+        _write(state, {**checked, **{n: now for n in names[:cap]}})
+    out = {r["full_name"]: r for r in found if r["full_name"].lower() not in known}
+    carried = 0
+    for name, e in (seen or {}).items():                # earlier list finds whose turn hasn't come
+        if e["meta"].get("via") and name not in out and name.lower() not in known:
+            out[name] = e["meta"]
+            carried += 1
     if lists:
-        print(f"followed {len(lists)} lists: {len(names)} linked repos, looked up {min(len(names), cap)}"
-              + (f"; {len(names) - cap} more need a token or a higher max_list_repos" if len(names) > cap else ""))
-    return {r["full_name"]: r for r in found if r["full_name"].lower() not in known}
+        left = max(0, len(names) - cap)
+        print(f"followed {len(lists)} lists: {len(names)} linked repos, looked up {min(len(names), cap)}, "
+              f"kept {carried} from earlier runs" + (f"; {left} wait for later runs" if left else ""))
+    return out
+
+
+def _interleave(groups: list[list[str]]) -> list[list[str]]:
+    """Round-robin: one name from each list in turn, so a long list can't use up the lookups."""
+    out, i = [], 0
+    while any(i < len(g) for g in groups):
+        out.append([g[i] for g in groups if i < len(g)])
+        i += 1
+    return out
 
 
 def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
@@ -122,7 +147,7 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
         except Exception as e:
             print(f"lookup {name} failed: {e}")
             failed = True
-    repos.update(follow_lists(repos, s, fetch))
+    repos.update(follow_lists(repos, s, fetch, paths, seen))
     if failed:
         for name, e in seen.items():
             repos.setdefault(name, e["meta"])

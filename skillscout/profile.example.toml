@@ -17,7 +17,7 @@ max_repo_mb = 300       # skip huge repos (trusted ones are always fetched)
 workers = 16            # repos fetched at once; lower it on a slow connection
 
 # Curated lists whose README links are followed (any found repo named awesome-* is followed too).
-# Each linked repo costs one API lookup: 300 a run with a token, 40 without.
+# Each linked repo costs one API lookup: 1,500 a run with a token, 40 without; the rest rotate in on later runs.
 follow_lists = true
 lists = [
   "hesreallyhim/awesome-claude-code",
@@ -25,7 +25,7 @@ lists = [
   "ComposioHQ/awesome-claude-skills",
   "VoltAgent/awesome-agent-skills",
 ]
-# max_list_repos = 300
+# max_list_repos = 1500
 
 # Always checked, whatever the search returns.
 trusted = [
