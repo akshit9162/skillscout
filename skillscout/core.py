@@ -68,6 +68,41 @@ def installed_skills(paths: Paths) -> dict[str, str]:
     return out
 
 
+def follow_lists(repos: dict, s: dict, fetch=github) -> dict:
+    """Repos linked from curated lists: the profile's `lists` plus any found repo named awesome-*.
+    Each link costs one API lookup, so at most `max_list_repos` are looked up per run; the same filters
+    (stars, freshness, size) then apply as to search results."""
+    if not s.get("follow_lists", True) or not hasattr(fetch, "readme"):
+        return {}
+    lists = set(s.get("lists", [])) | {n for n in repos if "awesome" in n.split("/")[-1].lower()}
+    known = {n.lower() for n in repos}
+    names, via = [], {}
+    for lst in sorted(lists):
+        try:
+            text = fetch.readme(lst)
+        except Exception as e:
+            print(f"list {lst}: {e}")
+            continue
+        for n in github.linked_repos(text):
+            if n.lower() not in known and n.lower() != lst.lower() and n not in via:
+                names.append(n)
+                via[n] = lst
+    cap = s.get("max_list_repos", 300 if github.token() else 40)
+
+    def look(n):
+        try:
+            return {**fetch.repo(n), "via": via[n]}
+        except Exception:                           # renamed, deleted or private: skip quietly
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        found = [r for r in pool.map(look, names[:cap]) if r]
+    if lists:
+        print(f"followed {len(lists)} lists: {len(names)} linked repos, looked up {min(len(names), cap)}"
+              + (f"; {len(names) - cap} more need a token or a higher max_list_repos" if len(names) > cap else ""))
+    return {r["full_name"]: r for r in found if r["full_name"].lower() not in known}
+
+
 def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
     """Search, clone, scan and score. Writes candidates.json and returns the candidates, best first.
     Repos with no new pushes aren't fetched and unchanged skills aren't re-scanned, unless `full`."""
@@ -87,6 +122,7 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
         except Exception as e:
             print(f"lookup {name} failed: {e}")
             failed = True
+    repos.update(follow_lists(repos, s, fetch))
     if failed:
         for name, e in seen.items():
             repos.setdefault(name, e["meta"])
@@ -102,8 +138,8 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
     locked = _read(paths.lock, {})
     previous = {c["id"]: c for c in _read(paths.candidates, [])}
     stale = set()           # repos whose refresh failed: don't record their push time, so the next run retries
-    if not os.environ.get("GITHUB_TOKEN"):
-        print("tip: set GITHUB_TOKEN for higher GitHub API limits (5,000 requests an hour instead of 60)")
+    if not github.token():
+        print("tip: set GITHUB_TOKEN or run `gh auth login` for higher GitHub API limits (5,000 requests an hour instead of 60)")
 
     def pull(r):
         last = seen.get(r["full_name"])

@@ -95,7 +95,7 @@ skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
 
 | Step | What happens |
 |---|---|
-| **Discover** | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos. Drops archived, stale (no push in a year), unpopular and huge repos. |
+| **Discover** | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos, then follows every repo linked from curated lists (your `lists`, plus any `awesome-*` repo it finds). Drops archived, stale (no push in a year), unpopular and huge repos. |
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
 | **Score** | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
@@ -135,7 +135,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
-Set `GITHUB_TOKEN` for higher API rate limits (5,000 requests an hour instead of 60). It's optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
+Set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 300 a run with a token, 40 without. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
 
 ## Limits
 

@@ -1,7 +1,9 @@
-"""GitHub search (REST API) and shallow clones. Set GITHUB_TOKEN for higher rate limits; it is optional."""
+"""GitHub search (REST API) and shallow clones. A token is optional: GITHUB_TOKEN, or the GitHub CLI's login if `gh` is installed."""
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import time
 import urllib.error
@@ -14,11 +16,27 @@ MAX_WAIT = 120  # seconds to wait out one rate-limit window
 TRIES = 4
 
 
+_token = None
+
+
+def token() -> str:
+    """GITHUB_TOKEN, else the GitHub CLI's login, else empty (anonymous: 60 API requests an hour)."""
+    global _token
+    if _token is None:
+        _token = os.environ.get("GITHUB_TOKEN", "")
+        if not _token and shutil.which("gh"):
+            try:
+                _token = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10).stdout.strip()
+            except (subprocess.SubprocessError, OSError):
+                _token = ""
+    return _token
+
+
 def _get(path: str) -> dict:
     req = urllib.request.Request(API + path, headers={"Accept": "application/vnd.github+json",
                                                       "User-Agent": "skillscout"})
-    if token := os.environ.get("GITHUB_TOKEN"):
-        req.add_header("Authorization", f"Bearer {token}")
+    if t := token():
+        req.add_header("Authorization", f"Bearer {t}")
     for attempt in range(TRIES):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
@@ -29,7 +47,7 @@ def _get(path: str) -> dict:
                 raise
             reset = e.headers.get("Retry-After") or max(0, int(e.headers.get("X-RateLimit-Reset", 0)) - int(time.time()))
             wait = min(int(reset) + 1, MAX_WAIT)
-            print(f"GitHub rate limit hit; waiting {wait}s" + ("" if os.environ.get("GITHUB_TOKEN") else " (set GITHUB_TOKEN to avoid this)"))
+            print(f"GitHub rate limit hit; waiting {wait}s" + ("" if token() else " (set GITHUB_TOKEN or log in with `gh auth login` to avoid this)"))
             time.sleep(wait)
 
 
@@ -46,6 +64,41 @@ def search(query: str, per_page: int) -> list[dict]:
 
 def repo(full_name: str) -> dict:
     return _repo(_get(f"/repos/{full_name}"))
+
+
+def readme(full_name: str) -> str:
+    """The README at the default branch, from raw.githubusercontent.com (no API quota used)."""
+    for name in ("README.md", "readme.md", "README.markdown", "README"):
+        req = urllib.request.Request(f"https://raw.githubusercontent.com/{full_name}/HEAD/{name}",
+                                     headers={"User-Agent": "skillscout"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+    raise FileNotFoundError(f"no README in {full_name}")
+
+
+# github.com paths that look like owner/repo but aren't repos
+NOT_OWNERS = {"about", "apps", "collections", "contact", "customer-stories", "enterprise", "features", "login",
+              "marketplace", "orgs", "pricing", "readme", "security", "settings", "site", "sponsors", "topics",
+              "trending", "users", "join", "explore", "notifications", "new", "codespaces", "events"}
+_LINK = re.compile(r"https?://(?:www\.)?github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))/([A-Za-z0-9._-]{1,100})")
+
+
+def linked_repos(text: str) -> list[str]:
+    """owner/repo for every GitHub repo linked from markdown, first mention first, no duplicates."""
+    out, seen = [], set()
+    for owner, name in _LINK.findall(text):
+        name = name.removesuffix(".git").rstrip(".")
+        if owner.lower() in NOT_OWNERS or not name or name.startswith("."):
+            continue
+        full = f"{owner}/{name}"
+        if full.lower() not in seen:
+            seen.add(full.lower())
+            out.append(full)
+    return out
 
 
 def git(*args: str, cwd: Path | None = None, stdin: str | None = None) -> str:

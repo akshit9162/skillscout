@@ -16,6 +16,17 @@ max_age_days = 365      # skip repos with no push in this window
 max_repo_mb = 300       # skip huge repos (trusted ones are always fetched)
 workers = 16            # repos fetched at once; lower it on a slow connection
 
+# Curated lists whose README links are followed (any found repo named awesome-* is followed too).
+# Each linked repo costs one API lookup: 300 a run with a token, 40 without.
+follow_lists = true
+lists = [
+  "hesreallyhim/awesome-claude-code",
+  "travisvn/awesome-claude-skills",
+  "ComposioHQ/awesome-claude-skills",
+  "VoltAgent/awesome-agent-skills",
+]
+# max_list_repos = 300
+
 # Always checked, whatever the search returns.
 trusted = [
   "anthropics/skills",

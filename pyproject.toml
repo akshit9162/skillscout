@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "skillscout"
+name = "skillscout-cli"
 version = "0.1.0"
 description = "Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, pinned installs"
 requires-python = ">=3.11"

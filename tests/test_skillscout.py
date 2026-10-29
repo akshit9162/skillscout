@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from skillscout import core
+from skillscout import core, github
 from skillscout.scan import HIGH, scan, worst
 from skillscout.score import conflicts, relevance
 from skillscout.skill import find_skills, parse_frontmatter
@@ -305,3 +305,26 @@ def test_failed_refresh_is_retried_next_run(env):
     synced.clear()
     core.discover(PROFILE, paths, fetch=gh, full=True)
     assert sorted(synced) == sorted(gh.repos)
+
+
+def test_linked_repos_parses_markdown_links():
+    text = """- [a](https://github.com/me/good) and [again](https://github.com/me/good/tree/main/skills)
+- [b](https://github.com/Other/repo.git). Sponsor: https://github.com/sponsors/me, topic https://github.com/topics/ai
+- [c](http://www.github.com/x/y.z)."""
+    assert github.linked_repos(text) == ["me/good", "Other/repo", "x/y.z"]
+
+
+def test_discover_follows_awesome_lists(env, tmp_path):
+    paths, gh = env
+    extra = tmp_path / "src" / "linked"
+    make_repo(extra, {"LICENSE": "MIT", "skills/gst-linked/SKILL.md": skill_md("gst-linked", "GST filing eval in Python")})
+    gh.repos["me/linked"] = (extra, 300)
+    found = {"me/good", "me/bad", "me/awesome-skills"}
+    gh.repos["me/awesome-skills"] = (extra, 300)
+    gh.search = lambda q, per_page: [gh._meta(n) for n in sorted(found)]
+    gh.readme = lambda name: "- [linked](https://github.com/me/linked)\n- [gone](https://github.com/me/missing)\n"
+    ids = {c["id"] for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert "me/linked:gst-linked" in ids                      # reached only through the list
+    assert not any(i.startswith("me/missing") for i in ids)   # a dead link is skipped
+    off = {**PROFILE, "search": {**PROFILE["search"], "follow_lists": False}}
+    assert "me/linked:gst-linked" not in {c["id"] for c in core.discover(off, paths, fetch=gh)}
