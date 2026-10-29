@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="424" viewBox="0 0 860 424" role="img" aria-label="Terminal demo: skillscout discover finds 216 recommended skills with 89 flagged high-risk, refuses to install a high-risk skill without --accept-risk, installs a low-risk one and pins it to a commit">
+<style>
+text{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#c9d1d9;white-space:pre}
+.cmd{fill:#f0f3f6}.dim{fill:#8b949e}.hi{fill:#ff9b8a}.bar{font-size:12px;fill:#8b949e}
+@keyframes a0{0%,2.50%{opacity:0}3.10%,95%{opacity:1}100%{opacity:0}}.l0{animation:a0 16.0s linear infinite}@keyframes a1{0%,10.00%{opacity:0}10.60%,95%{opacity:1}100%{opacity:0}}.l1{animation:a1 16.0s linear infinite}@keyframes a2{0%,11.25%{opacity:0}11.85%,95%{opacity:1}100%{opacity:0}}.l2{animation:a2 16.0s linear infinite}@keyframes a4{0%,20.00%{opacity:0}20.60%,95%{opacity:1}100%{opacity:0}}.l4{animation:a4 16.0s linear infinite}@keyframes a5{0%,25.00%{opacity:0}25.60%,95%{opacity:1}100%{opacity:0}}.l5{animation:a5 16.0s linear infinite}@keyframes a6{0%,26.25%{opacity:0}26.85%,95%{opacity:1}100%{opacity:0}}.l6{animation:a6 16.0s linear infinite}@keyframes a7{0%,27.50%{opacity:0}28.10%,95%{opacity:1}100%{opacity:0}}.l7{animation:a7 16.0s linear infinite}@keyframes a9{0%,36.25%{opacity:0}36.85%,95%{opacity:1}100%{opacity:0}}.l9{animation:a9 16.0s linear infinite}@keyframes a10{0%,41.25%{opacity:0}41.85%,95%{opacity:1}100%{opacity:0}}.l10{animation:a10 16.0s linear infinite}@keyframes a12{0%,50.00%{opacity:0}50.60%,95%{opacity:1}100%{opacity:0}}.l12{animation:a12 16.0s linear infinite}@keyframes a13{0%,55.00%{opacity:0}55.60%,95%{opacity:1}100%{opacity:0}}.l13{animation:a13 16.0s linear infinite}@keyframes a14{0%,62.50%{opacity:0}63.10%,95%{opacity:1}100%{opacity:0}}.l14{animation:a14 16.0s linear infinite}@keyframes a15{0%,66.25%{opacity:0}66.85%,95%{opacity:1}100%{opacity:0}}.l15{animation:a15 16.0s linear infinite}
+@media (prefers-reduced-motion:reduce){.l{animation:none!important;opacity:1}}
+</style>
+<rect width="860" height="424" rx="10" fill="#0f1319"/>
+<rect width="860" height="34" rx="10" fill="#1a1f27"/><rect y="24" width="860" height="10" fill="#1a1f27"/>
+<circle cx="20" cy="17" r="5" fill="#3a404a"/><circle cx="38" cy="17" r="5" fill="#3a404a"/><circle cx="56" cy="17" r="5" fill="#3a404a"/>
+<text class="bar" x="430.0" y="21" text-anchor="middle">skillscout demo, counts from the 27 Oct 2026 run</text>
+<text class="l cmd l0" x="24" y="54">$ skillscout discover</text>
+<text class="l out l1" x="24" y="76">0 new, 216 recommended, 89 flagged high-risk</text>
+<text class="l dim l2" x="24" y="98">report: ~/.skillscout/reports/2026-10-27.md</text>
+<text class="l cmd l4" x="24" y="142">$ skillscout list -n 3</text>
+<text class="l out l5" x="24" y="164">0.94  low     REC        alirezarezvani/claude-skills:senior-prompt-engineer</text>
+<text class="l out l6" x="24" y="186">0.94  low     REC        github/awesome-copilot:eval-driven-dev</text>
+<text class="l hi l7" x="24" y="208">0.92  high               anthropics/skills:claude-api</text>
+<text class="l cmd l9" x="24" y="252">$ skillscout approve anthropics/skills:claude-api</text>
+<text class="l hi l10" x="24" y="274">anthropics/skills:claude-api has high-risk flags; read it with `show`, then pass --accept-risk</text>
+<text class="l cmd l12" x="24" y="318">$ skillscout approve github/awesome-copilot:eval-driven-dev</text>
+<text class="l out l13" x="24" y="340">installed github/awesome-copilot:eval-driven-dev -&gt; ~/.claude/skills/eval-driven-dev</text>
+<text class="l cmd l14" x="24" y="362">$ skillscout installed</text>
+<text class="l out l15" x="24" y="384">github/awesome-copilot:eval-driven-dev  @d75b418635  2026-10-27T21:04:11+00:00</text>
+</svg>

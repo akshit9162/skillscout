@@ -136,3 +136,12 @@ p code, td code { font-family: var(--font-outlier); font-size: 0.9em; }
 .lost { display: grid; gap: var(--space-lg); justify-items: start; padding-block: var(--space-4xl); }
 @media (max-width: 40rem) { .levels tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; } .levels td:last-child { grid-column: 1 / -1; } .levels td.num { text-align: right; } }
 .skip { min-height: 44px; display: inline-flex; align-items: center; }
+
+/* report page: one column at a reading measure, figures first */
+.report h1 { max-width: 18ch; margin-top: var(--space-sm); }
+.report .lead { margin-top: var(--space-md); }
+.report__meta { font: 500 var(--text-sm)/1.4 var(--font-display); color: var(--color-muted); }
+.report__figures { max-width: 36rem; margin-top: var(--space-2xl); }
+.report__body { display: grid; gap: var(--space-md); max-width: calc(68ch + 2 * var(--gutter)); margin-inline: 0; }
+.report__body h2 { margin-bottom: var(--space-xs); }
+.report__body .graphite { margin-top: var(--space-md); }

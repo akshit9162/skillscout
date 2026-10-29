@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://akshit9162.github.io/skillscout">Website</a> &ensp;·&ensp;
+  <a href="https://akshit9162.github.io/skillscout/report.html">Report: what's inside 6,726 skills</a> &ensp;·&ensp;
   <a href="#install">Install</a> &ensp;·&ensp;
   <a href="#a-week-with-skillscout">A week with it</a> &ensp;·&ensp;
   <a href="#how-it-works">How it works</a> &ensp;·&ensp;
@@ -16,6 +17,16 @@
   <img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/dependencies-0-brightgreen.svg" alt="No dependencies" />
 </p>
+
+<p align="center">
+  <img src="docs/assets/demo.svg" width="760" alt="Terminal demo: discover finds 216 recommended skills with 89 flagged high-risk; a high-risk skill is refused without --accept-risk; a low-risk one installs pinned to a commit" />
+</p>
+
+```bash
+claude plugin marketplace add akshit9162/skillscout && claude plugin install skillscout@skillscout
+# or the CLI on its own
+pipx install git+https://github.com/akshit9162/skillscout
+```
 
 AI tooling moves weekly. New skills, plugins and agent workflows land on GitHub every day, the ones you
 installed keep changing upstream, and last month's best practice is already stale. Nobody has time to
@@ -31,6 +42,7 @@ your approval, pins each install to an exact commit, and re-scans every update b
 
 In one run over the public ecosystem it found **6,726 skills in 95 repos**. 198 had at least one high-risk flag,
 mostly `sudo` and `curl | sh` install steps, plus prompt-injection-style text and hidden Unicode.
+The [report](https://akshit9162.github.io/skillscout/report.html) reads every one of the scariest flags: they were defenders.
 
 It's a zero-dependency Python CLI, and it also ships as a skill, so your agent can run the whole loop for you
 and still ask before every install.

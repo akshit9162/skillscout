@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What’s inside 6,726 agent skills</title>
+<meta name="description" content="Every file in 6,726 public agent skills from 95 repos, scanned on 27 Oct 2026. The alarming flags were defenders; the real exposure is install steps an agent runs with your permissions.">
+<meta property="og:title" content="What’s inside 6,726 agent skills">
+<meta property="og:description" content="The alarming flags were defenders; the real exposure is install steps an agent runs with your permissions.">
+<meta property="og:image" content="https://akshit9162.github.io/skillscout/assets/og.png">
+<meta property="og:url" content="https://akshit9162.github.io/skillscout/report.html">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="container">
+    <a class="wordmark" href="./">skillscout</a>
+    <ul class="nav__links">
+      <li><a href="./">The tool</a></li>
+      <li><a href="#method">Method</a></li>
+    </ul>
+    <a class="key key--small" href="https://github.com/akshit9162/skillscout">GitHub</a>
+  </div>
+</header>
+
+<main id="main" class="report">
+  <section aria-labelledby="report-title">
+    <div class="container">
+      <p class="report__meta">Report, 27 Oct 2026, by Akshit Gupta</p>
+      <h1 id="report-title">What’s inside 6,726 agent skills</h1>
+      <p class="lead">The scariest flags were false alarms. The risk is elsewhere.</p>
+      <table class="ledger report__figures">
+        <thead><tr><th scope="col">Measure</th><th scope="col" class="num-col">Count</th></tr></thead>
+        <tbody>
+          <tr><td>Skills scanned</td><td class="num">6,726</td></tr>
+          <tr><td>With at least one flag</td><td class="num">1,756</td></tr>
+          <tr class="wash"><td>With a high-risk flag</td><td class="num">198</td></tr>
+          <tr><td>Repos those 198 come from</td><td class="num">37</td></tr>
+          <tr><td>Of those, in the top five repos</td><td class="num">113</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="defenders-title">
+    <div class="container report__body">
+      <h2 id="defenders-title">The alarming flags were defenders</h2>
+      <p>28 skills contain “ignore previous instructions”. I read all 39 lines. Every one quotes the attack to block it, test for it or teach it.</p>
+      <p>8 contain hidden Unicode. Seven are code that strips it, plus its tests. The eighth nests a code fence with a zero-width space.</p>
+      <p>A pattern cannot tell an attack from a description of one. So skillscout blocks and asks you to read; it never calls a skill malicious.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="install-title">
+    <div class="container report__body">
+      <h2 id="install-title">The real exposure is install steps</h2>
+      <p>134 of the 198 are high only because of <code>sudo</code> or a download piped into a shell: <code>apt-get install</code>, an installer from <code>astral.sh</code> or <code>rustup</code>.</p>
+      <p>Ordinary in a README. In a skill, your agent runs them with your permissions, from a URL that can change after you read it.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="ask-title">
+    <div class="container report__body">
+      <h2 id="ask-title">Skills that act without asking</h2>
+      <p>9 skills tell the agent to skip you: deploy on a timeout, kill browser processes and retry, file a bug without review, gather data quietly. None is hostile. Each removes a check you might want.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="payload-title">
+    <div class="container report__body">
+      <h2 id="payload-title">Attack payloads, shipped as skills</h2>
+      <p>41 of the 198 sit in two offensive-security and CTF packs. They carry working payloads verbatim, such as a shell-profile line that fetches a stager.</p>
+      <p>Right for a pentest. Risky as a skill your agent can load in any session.</p>
+    </div>
+  </section>
+
+  <section id="method" aria-labelledby="method-title">
+    <div class="container report__body">
+      <h2 id="method-title">Method and limits</h2>
+      <p>Pattern rules over every file, at the commit that was scanned. Nothing was executed and nothing was judged by a model. Counts are from one run.</p>
+      <figure class="graphite">
+        <figcaption class="graphite__bar"><span>reproduce</span></figcaption>
+<pre class="wrap" tabindex="0" aria-label="Commands to reproduce"><code>pipx install git+https://github.com/akshit9162/skillscout
+skillscout init
+skillscout discover --full</code></pre>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="container">
+    <span>skillscout, MIT licence, by Akshit Gupta</span>
+    <a href="https://github.com/akshit9162/skillscout">github.com/akshit9162/skillscout</a>
+  </div>
+</footer>
+</body>
+</html>
