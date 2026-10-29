@@ -1,0 +1,52 @@
+name: index
+
+# Crawl and scan the skill ecosystem once a week and publish index.json.gz, which every
+# `skillscout discover` downloads and scores locally.
+on:
+  schedule:
+    - cron: "0 3 * * 1"   # Mondays, 03:00 UTC
+  workflow_dispatch:
+
+concurrency: index
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    permissions:
+      contents: write     # upload the index to the `index` release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install .
+      # Only the small JSON state is kept between runs (scan results, list rotation); clones are refetched.
+      - uses: actions/cache/restore@v4
+        id: state
+        with:
+          path: ~/.skillscout/*.json
+          key: index-state-${{ github.run_id }}
+          restore-keys: index-state-
+      - name: Without a warm cache, continue from the last published state
+        if: steps.state.outputs.cache-matched-key == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download index -p state.tar.gz && python ci/state.py unpack state.tar.gz || echo "no published state; starting fresh"
+      - run: skillscout --profile ci/index-profile.toml index --out index.json.gz
+        env:
+          # A personal token (repo secret INDEX_TOKEN) allows 5,000 lookups an hour; the job token allows 1,000.
+          GITHUB_TOKEN: ${{ secrets.INDEX_TOKEN || github.token }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.skillscout/*.json
+          key: index-state-${{ github.run_id }}
+      - name: Publish to the index release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view index >/dev/null 2>&1 || gh release create index --target main --latest=false \
+            --title "Shared index" --notes "The weekly crawl that \`skillscout discover\` scores locally. Rebuilt every Monday."
+          python ci/state.py pack state.tar.gz
+          gh release upload index index.json.gz state.tar.gz --clobber

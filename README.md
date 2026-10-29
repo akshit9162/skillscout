@@ -83,7 +83,7 @@ skillscout init                                              # writes ~/.skillsc
 Edit `[keywords]` in `~/.skillscout/profile.toml` with the words from your own work, then:
 
 ```sh
-skillscout discover          # search, scan, score; writes ~/.skillscout/reports/<date>.md
+skillscout discover          # score this week's index; writes ~/.skillscout/reports/<date>.md
 skillscout list              # ranked; REC = recommended
 skillscout show <id>         # every flag plus the full SKILL.md, before you decide
 skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
@@ -93,15 +93,17 @@ skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
 
 ## How it works
 
+The crawl is the same for everyone, so it runs once a week in this repo's [index workflow](.github/workflows/index.yml) and is published as `index.json.gz`. `skillscout discover` downloads that one file (seconds, no GitHub token, your keywords never leave your machine) and scores it locally. `show` and `approve` fetch the skill and scan it again on your machine, so nothing is installed on the index's word. `discover --local` runs the whole crawl yourself instead.
+
 | Step | What happens |
 |---|---|
-| **Discover** | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos, then follows every repo linked from curated lists (your `lists`, plus any `awesome-*` repo it finds). Drops archived, stale (no push in a year), unpopular and huge repos. |
+| **Discover** (weekly job, or `--local`) | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos, then follows every repo linked from curated lists (your `lists`, plus any `awesome-*` repo it finds). Drops archived, stale (no push in a year), unpopular and huge repos. |
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
-| **Score** | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
+| **Score** (your machine) | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
-| **Approve** | You pick one. It's copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
+| **Approve** | You pick one. It's fetched and scanned again on your machine (that scan decides), then copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
 | **Update** | `skillscout updates` diffs each pinned skill against upstream and applies nothing. Taking an update re-runs the scan. |
 
 ## What gets flagged
@@ -127,7 +129,8 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | Command | Does |
 |---|---|
 | `skillscout init` | Copy the example profile to `~/.skillscout/profile.toml` |
-| `skillscout discover [--full] [--notify]` | Search, scan, score, write the report. `--full` ignores the caches; `--notify` sends a desktop notification (macOS, or Linux with `notify-send`) |
+| `skillscout discover [--local [--full]] [--notify]` | Score the weekly index against your profile and write the report. `--local` crawls and scans GitHub on your machine instead; `--full` then ignores the caches; `--notify` sends a desktop notification (macOS, or Linux with `notify-send`) |
+| `skillscout index [--out FILE]` | Crawl and scan the ecosystem and write the shared index (what the weekly job runs) |
 | `skillscout list [--all] [-n N]` | Ranked candidates |
 | `skillscout show <id>` | Flags, conflicts and the full SKILL.md |
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
@@ -135,7 +138,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
-Set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
+With the index, `discover` makes no GitHub API calls at all. For `--local` and `index`, set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
 
 ## Limits
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import os
 
-from . import github
+from . import github, index
 from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
 from .skill import find_skills, parse_frontmatter
@@ -28,6 +28,8 @@ class Paths:
         self.state, self.skills, self.plugins = state, skills, plugins
         self.cache = state / "repos"
         self.candidates = state / "candidates.json"
+        self.crawl = state / "crawl.json"     # the user-independent part of the last crawl (what the index publishes)
+        self.index = state / "index.json.gz"  # the last shared index downloaded
         self.repos = state / "repos.json"     # each repo's metadata, push time, checkout and commit at the last run
         self.lock = state / "skills.lock.json"
         self.reports = state / "reports"
@@ -94,6 +96,11 @@ def follow_lists(repos: dict, s: dict, fetch=github, paths: "Paths | None" = Non
     checked = _read(state, {}) if state else {}
     names.sort(key=lambda n: checked.get(n, ""))       # never looked up ("") first, then the oldest
     cap = s.get("max_list_repos", 1500 if github.token() else 40)
+    if fetch is github:                                 # never spend more lookups than the hour has left
+        try:
+            cap = min(cap, max(0, github._get("/rate_limit")["resources"]["core"]["remaining"] - 50))
+        except Exception:
+            pass
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def look(n):
@@ -128,10 +135,10 @@ def _interleave(groups: list[list[str]]) -> list[list[str]]:
     return out
 
 
-def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
-    """Search, clone, scan and score. Writes candidates.json and returns the candidates, best first.
-    Repos with no new pushes aren't fetched and unchanged skills aren't re-scanned, unless `full`."""
-    s = profile["search"]
+def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
+    """Search, clone and scan: the part that is the same for every user. Returns one record per skill and
+    keeps them in crawl.json. Repos with no new pushes aren't fetched and unchanged skills aren't
+    re-scanned, unless `full`."""
     seen = {} if full else _read(paths.repos, {})
     repos, failed = {}, False
     for q in s["queries"]:
@@ -159,9 +166,7 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
         and r.get("size_kb", 0) <= s.get("max_repo_mb", 300) * 1024
         and freshness(r["pushed_at"], now) > 1 - s.get("max_age_days", 365) / 365)]
 
-    installed = installed_skills(paths)
-    locked = _read(paths.lock, {})
-    previous = {c["id"]: c for c in _read(paths.candidates, [])}
+    previous = {c["id"]: c for c in _read(paths.crawl, None) or _read(paths.candidates, [])}
     stale = set()           # repos whose refresh failed: don't record their push time, so the next run retries
     if not github.token():
         print("tip: set GITHUB_TOKEN or run `gh auth login` for higher GitHub API limits (5,000 requests an hour instead of 60)")
@@ -187,7 +192,7 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
     print(f"fetched {sum(1 for r, *_ in synced if seen.get(r['full_name'], {}).get('meta', {}).get('pushed_at') != r['pushed_at'])} "
           f"of {len(synced)} repos; the rest had no new pushes")
 
-    candidates, reused = [], 0
+    records, reused = [], 0
     for r, root, commit in synced:
         try:
             tree_of = github.trees(root)
@@ -195,7 +200,6 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
             tree_of = {}
         licensed = any((root / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"))
         for sk in find_skills(root):
-            rel, hits = relevance(f"{sk.name} {sk.description}", profile["keywords"])
             cid = f"{r['full_name']}:{sk.name}"
             tree = tree_of.get(str(sk.path.relative_to(root)))
             key = f"{RULES}:{tree}:{int(licensed)}" if tree else None
@@ -204,20 +208,61 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
                 flags, reused = old["flags"], reused + 1
             else:
                 flags = [asdict(f) for f in scan(sk.path, root)]
-            candidates.append({
+            records.append({
                 "id": cid, "repo": r["full_name"], "name": sk.name, "description": sk.description,
                 "path": str(sk.path.relative_to(root)), "commit": commit, "stars": r["stars"],
-                "license": r["license"], "pushed_at": r["pushed_at"], "trusted": r["full_name"] in trusted,
-                "relevance": round(rel, 3), "matched": hits,
-                "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["full_name"] in trusted),
+                "license": r["license"], "pushed_at": r["pushed_at"],
                 "flags": flags, "risk": worst(flags), "scan_key": key,
-                "conflicts": conflicts(sk.name, sk.description, installed, profile["scoring"]["overlap_at"]),
-                "installed": cid in locked, "new": cid not in previous,
             })
-    print(f"scanned {len(candidates) - reused} skills, reused {reused} unchanged")
+    print(f"scanned {len(records) - reused} skills, reused {reused} unchanged")
+    _write(paths.crawl, records)
+    return records
+
+
+def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
+    """The personal part: relevance to this profile's keywords, conflicts with what's installed, what's new.
+    Writes candidates.json and returns the candidates, best first."""
+    now = datetime.now(timezone.utc)
+    trusted = set(profile.get("search", {}).get("trusted", []))
+    installed = installed_skills(paths)
+    locked = _read(paths.lock, {})
+    previous = {c["id"] for c in _read(paths.candidates, [])}
+    candidates = []
+    for r in records:
+        rel, hits = relevance(f"{r['name']} {r['description']}", profile["keywords"])
+        candidates.append({
+            **r, "trusted": r["repo"] in trusted, "relevance": round(rel, 3), "matched": hits,
+            "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted),
+            "conflicts": conflicts(r["name"], r["description"], installed, profile["scoring"]["overlap_at"]),
+            "installed": r["id"] in locked, "new": r["id"] not in previous,
+        })
     candidates.sort(key=lambda c: c["score"], reverse=True)
     _write(paths.candidates, candidates)
     return candidates
+
+
+def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]:
+    """Crawl GitHub on this machine, then score: the `--local` path."""
+    return score(crawl(profile["search"], paths, fetch, full), profile, paths)
+
+
+def discover_from_index(profile: dict, paths: Paths, url: str = index.URL) -> list[dict]:
+    """Score the shared weekly index instead of crawling: one download, no GitHub API calls."""
+    idx = index.fetch(url, paths.index)
+    print(f"index built {idx['built_at']}: {len(idx['skills'])} skills from {len({s['repo'] for s in idx['skills']})} repos")
+    return score(idx["skills"], profile, paths)
+
+
+def ensure_local(c: dict, paths: Paths, fetch=github) -> dict:
+    """Fetch the skill and scan it again here, so nothing about it is taken from the index on trust."""
+    root, commit = fetch.sync(c["repo"], paths.cache)
+    src = root / c["path"]
+    if not (src / "SKILL.md").exists():
+        raise SystemExit(f"{c['id']} is no longer at {c['path']} upstream; run `skillscout discover` again")
+    flags = [asdict(f) for f in scan(src, root)]
+    if commit != c["commit"]:
+        print(f"note: upstream moved from {c['commit'][:10]} to {commit[:10]} since the scan; showing the new commit")
+    return {**c, "commit": commit, "flags": flags, "risk": worst(flags)}
 
 
 def recommended(c: dict, profile: dict) -> bool:
@@ -267,8 +312,11 @@ def source_dir(c: dict, paths: Paths) -> Path:
     return paths.cache / c["repo"].replace("/", "__") / c["path"]
 
 
-def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = False) -> Path:
-    """Copy one skill into ~/.claude/skills and pin it in the lockfile."""
+def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = False, fetch=None) -> Path:
+    """Copy one skill into ~/.claude/skills and pin it in the lockfile. With `fetch`, the skill is fetched and
+    re-scanned here first, and that scan decides."""
+    if fetch is not None:
+        c = ensure_local(c, paths, fetch)
     if c["risk"] == HIGH and not accept_risk:
         raise SystemExit(f"{c['id']} has high-risk flags; read it with `show`, then pass --accept-risk")
     src, dest = source_dir(c, paths), paths.skills / c["name"]

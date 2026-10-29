@@ -25,8 +25,9 @@ before the first `discover`. The search only finds what the keywords describe.
 
 The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedule` so discovery runs every week, and lead every summary with what is new since the last run.
 
-1. `skillscout discover` searches, clones (skill folders only), scans and scores, and writes
-   `~/.skillscout/reports/<date>.md`. It takes a few minutes the first time, so run it in the background.
+1. `skillscout discover` downloads the shared weekly index, scores it against the profile and writes
+   `~/.skillscout/reports/<date>.md`. It takes seconds. (`--local` crawls GitHub here instead and takes
+   minutes; run that in the background.)
 2. Summarise the report for the user: the top recommended skills (what each does, its score, stars) and
    the relevant skills that were blocked, with the reason.
 3. For any skill the user is interested in, run `skillscout show <id>` and tell them:
@@ -49,7 +50,7 @@ The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedul
 
 | Command | Does |
 |---|---|
-| `skillscout discover [--notify]` | Search, scan, score, write report |
+| `skillscout discover [--local] [--notify]` | Score the weekly index (or crawl here with `--local`), write report |
 | `skillscout list [--all] [-n N]` | Ranked candidates; `REC` = recommended |
 | `skillscout show <id>` | Flags plus full SKILL.md |
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |

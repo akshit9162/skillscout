@@ -12,7 +12,7 @@
       "name": "skillscout",
       "source": "./",
       "description": "AI tooling moves weekly. Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, and installs pinned to a commit.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "akshit9162",
         "url": "https://github.com/akshit9162"

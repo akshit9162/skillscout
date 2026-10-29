@@ -1,6 +1,11 @@
 # skillscout profile. `skillscout init` copies this to ~/.skillscout/profile.toml; edit that copy.
 # Keyword weights say how much a match matters. Replace them with words from your own work.
 
+# The shared weekly index that `discover` scores. Set url = "" to always crawl locally.
+[index]
+url = "https://github.com/akshit9162/skillscout/releases/download/index/index.json.gz"
+
+# Used by `discover --local` (and by the weekly index job, with its own profile).
 [search]
 # GitHub repository-search queries, run on every `skillscout discover`.
 queries = [

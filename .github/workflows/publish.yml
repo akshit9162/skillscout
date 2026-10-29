@@ -6,6 +6,7 @@ on:
 
 jobs:
   pypi:
+    if: startsWith(github.event.release.tag_name, 'v')   # not the weekly `index` release
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

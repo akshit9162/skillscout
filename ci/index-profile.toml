@@ -1,0 +1,45 @@
+# What the weekly index job crawls. Everyone's `skillscout discover` scores this crawl locally,
+# so it is deliberately broad; personal keywords never come here.
+
+[search]
+queries = [
+  "topic:claude-skills",
+  "topic:agent-skills",
+  "topic:claude-code-skills",
+  "topic:claude-code-plugin",
+  "topic:agent-skill",
+  "topic:codex-skills",
+  "\"SKILL.md\" claude in:readme",
+  "\"SKILL.md\" agent skills in:readme",
+]
+per_query = 50
+min_stars = 25
+max_age_days = 365
+max_repo_mb = 300
+workers = 16
+
+# Curated lists whose README links are followed (found awesome-* repos are followed too).
+# Lookups are capped by what the hour's API quota has left; the rest rotate in on later runs.
+follow_lists = true
+lists = [
+  "hesreallyhim/awesome-claude-code",
+  "travisvn/awesome-claude-skills",
+  "ComposioHQ/awesome-claude-skills",
+  "VoltAgent/awesome-agent-skills",
+  "composio-community/awesome-claude-plugins",
+  "quemsah/awesome-claude-plugins",
+]
+max_list_repos = 4500
+
+trusted = [
+  "anthropics/skills",
+  "anthropics/knowledge-work-plugins",
+  "obra/superpowers",
+]
+
+[keywords]
+
+[scoring]
+recommend_at = 0.45
+min_relevance = 0.3
+overlap_at = 0.35

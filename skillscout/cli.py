@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __doc__ as ABOUT, core, schedule
+from . import __doc__ as ABOUT, core, github, index, schedule
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
@@ -25,13 +25,17 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--profile", type=Path, default=None, help="default: ~/.skillscout/profile.toml, else the example")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init", help="copy the example profile to ~/.skillscout/profile.toml")
-    d = sub.add_parser("discover", help="search GitHub, scan and score skills, write a report")
-    d.add_argument("--full", action="store_true", help="ignore caches: fetch every repo and re-scan every skill")
+    d = sub.add_parser("discover", help="score this week's shared index against your profile and write a report")
+    d.add_argument("--local", action="store_true", help="crawl and scan GitHub on this machine instead of using the index")
+    d.add_argument("--full", action="store_true", help="with --local: ignore caches, fetch every repo and re-scan every skill")
     d.add_argument("--notify", action="store_true", help="desktop notification with the summary (macOS, or Linux with notify-send)")
     ls = sub.add_parser("list", help="show scored candidates")
     ls.add_argument("--all", action="store_true", help="include zero-relevance skills")
     ls.add_argument("-n", type=int, default=30)
-    sh = sub.add_parser("show", help="print a candidate's flags and full SKILL.md")
+    ix = sub.add_parser("index", help="crawl and scan the ecosystem and write the shared index (what the weekly job runs)")
+    ix.add_argument("--out", type=Path, default=Path("index.json.gz"))
+    ix.add_argument("--full", action="store_true", help="ignore caches: fetch every repo and re-scan every skill")
+    sh = sub.add_parser("show", help="fetch a candidate, scan it here, print its flags and full SKILL.md")
     sh.add_argument("id")
     ap = sub.add_parser("approve", help="install one skill into ~/.claude/skills and pin it")
     ap.add_argument("id")
@@ -56,18 +60,29 @@ def main(argv: list[str] | None = None) -> None:
     cands = core._read(paths.candidates, [])
 
     if a.cmd == "discover":
-        cands = core.discover(profile, paths, full=a.full)
+        url = profile.get("index", {}).get("url", index.URL)
+        if a.local or not url:
+            cands = core.discover(profile, paths, full=a.full)
+        else:
+            try:
+                cands = core.discover_from_index(profile, paths, url)
+            except index.Unavailable as e:
+                raise SystemExit(str(e))
         out, summary = core.report(cands, profile, paths)
         print(f"{summary}\nreport: {out}")
         if a.notify:
             notify(summary)
+    elif a.cmd == "index":
+        records = core.crawl(profile["search"], paths, full=a.full)
+        data = index.build(records, a.out, core.RULES)
+        print(f"wrote {a.out}: {len(data['skills'])} skills from {len({r['repo'] for r in records})} repos")
     elif a.cmd == "list":
         rows = [c for c in cands if a.all or c["relevance"] > 0][: a.n]
         for c in rows:
             tag = "installed" if c["installed"] else ("REC" if core.recommended(c, profile) else "")
             print(f"{c['score']:.2f}  {c['risk'] or '-':6}  {tag:9}  {c['id']}")
     elif a.cmd == "show":
-        c = core.find(cands, a.id)
+        c = core.ensure_local(core.find(cands, a.id), paths)
         print(json.dumps({k: c[k] for k in ("id", "score", "stars", "license", "commit", "risk", "matched", "conflicts")}, indent=2))
         for f in c["flags"]:
             print(f"  [{f['level']}] {f['reason']} — {f['where']}")
@@ -76,7 +91,7 @@ def main(argv: list[str] | None = None) -> None:
         print((src / "SKILL.md").read_text(errors="ignore"))
     elif a.cmd == "approve":
         c = core.find(cands, a.id)
-        print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update)}")
+        print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update, fetch=github)}")
     elif a.cmd == "remove":
         print(f"removed {core.remove(a.id, paths)}")
     elif a.cmd == "installed":

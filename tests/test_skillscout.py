@@ -345,3 +345,27 @@ def test_list_lookups_rotate_and_share_across_lists(env, tmp_path):
     assert {"me/a1", "me/b1"} <= first and "me/a2" not in first    # one from each list, not two from the first
     second = {c["repo"] for c in core.discover(one, paths, fetch=gh)}
     assert {"me/a1", "me/a2", "me/b1"} <= second                    # a2's turn; earlier finds are kept
+
+
+def test_index_round_trip_scores_locally_and_works_offline(env, tmp_path):
+    from skillscout import index
+    paths, gh = env
+    records = core.crawl(PROFILE["search"], paths, fetch=gh)
+    built = tmp_path / "pub" / "index.json.gz"
+    index.build(records, built, "rules")
+    url = built.as_uri()                                     # file:// stands in for the release download
+    cands = core.discover_from_index(PROFILE, paths, url)
+    assert {c["id"] for c in cands} == {r["id"] for r in records}
+    assert cands[0]["relevance"] >= cands[-1]["relevance"]  # scored against this profile, on this machine
+    built.unlink()                                           # offline: the cached copy is used
+    assert len(core.discover_from_index(PROFILE, paths, url)) == len(records)
+
+
+def test_approve_rescans_locally_instead_of_trusting_the_index(env):
+    paths, gh = env
+    cands = core.discover(PROFILE, paths, fetch=gh)
+    bad = core.find(cands, "rl-helper")
+    clean_claim = {**bad, "flags": [], "risk": None}         # what a tampered index might say
+    with pytest.raises(SystemExit, match="high-risk"):
+        core.approve(clean_claim, paths, fetch=gh)
+    assert not (paths.skills / "rl-helper").exists()

@@ -1,6 +1,6 @@
 {
   "name": "skillscout",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI tooling moves weekly. Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, and installs pinned to a commit.",
   "author": {
     "name": "akshit9162",
