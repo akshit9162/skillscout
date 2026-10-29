@@ -11,12 +11,12 @@ patterns, and installs only what the user approves, pinned to an exact commit.
 ## Setup (once)
 
 ```bash
-command -v skillscout || pipx install git+https://github.com/akshit9162/skillscout
+command -v skillscout || pipx install skillscout-cli
 skillscout init        # writes ~/.skillscout/profile.toml; skip if it exists
 ```
 
-If `pipx` is missing, use `uv tool install git+https://github.com/akshit9162/skillscout` or
-`pip install --user git+https://github.com/akshit9162/skillscout`.
+If `pipx` is missing, use `uv tool install skillscout-cli` or
+`pip install --user skillscout-cli`.
 
 Ask the user what they work on and put those words in `[keywords]` of `~/.skillscout/profile.toml`
 before the first `discover`. The search only finds what the keywords describe.

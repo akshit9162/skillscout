@@ -25,7 +25,7 @@
 ```bash
 claude plugin marketplace add akshit9162/skillscout && claude plugin install skillscout@skillscout
 # or the CLI on its own
-pipx install git+https://github.com/akshit9162/skillscout
+pipx install skillscout-cli
 ```
 
 AI tooling moves weekly. New skills, plugins and agent workflows land on GitHub every day, the ones you
@@ -76,7 +76,7 @@ summarises the report and shows you each skill's flags before asking to install 
 ### As a CLI
 
 ```sh
-pipx install git+https://github.com/akshit9162/skillscout     # or: uv tool install git+https://...
+pipx install skillscout-cli     # or: uv tool install skillscout-cli
 skillscout init                                              # writes ~/.skillscout/profile.toml
 ```
 
