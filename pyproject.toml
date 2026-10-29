@@ -1,8 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "skillscout"
 version = "0.1.0"
 description = "Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, pinned installs"
 requires-python = ">=3.11"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Akshit Gupta" }]
+keywords = ["claude", "claude-code", "agent-skills", "security", "supply-chain", "llm"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://akshit9162.github.io/skillscout"
+Source = "https://github.com/akshit9162/skillscout"
+Issues = "https://github.com/akshit9162/skillscout/issues"
+Report = "https://akshit9162.github.io/skillscout/report.html"
 
 [project.optional-dependencies]
 dev = ["pytest"]

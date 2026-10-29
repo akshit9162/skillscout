@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/header.svg" width="760" alt="skillscout: keep your agent's skills current, safely" />
+  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/header.svg" width="760" alt="skillscout: keep your agent's skills current, safely" />
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo.svg" width="760" alt="Terminal demo: discover finds 216 recommended skills with 89 flagged high-risk; a high-risk skill is refused without --accept-risk; a low-risk one installs pinned to a commit" />
+  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/demo.svg" width="760" alt="Terminal demo: discover finds 216 recommended skills with 89 flagged high-risk; a high-risk skill is refused without --accept-risk; a low-risk one installs pinned to a commit" />
 </p>
 
 ```bash
