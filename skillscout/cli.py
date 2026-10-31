@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> None:
         if USER_PROFILE.exists():
             raise SystemExit(f"{USER_PROFILE} already exists")
         USER_PROFILE.parent.mkdir(parents=True, exist_ok=True)
-        USER_PROFILE.write_text(EXAMPLE.read_text(), encoding="utf-8"ncoding="utf-8"))
+        USER_PROFILE.write_text(EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
         print(f"wrote {USER_PROFILE}; edit [keywords] to match your work, then run `skillscout discover`")
         return
     profile = core.load_profile(a.profile or (USER_PROFILE if USER_PROFILE.exists() else EXAMPLE))
