@@ -74,7 +74,10 @@ def installed_skills(paths: Paths) -> dict[str, str]:
     for root, is_plugin in ((paths.skills, False), (paths.plugins, True)):
         if not root.exists():
             continue
-        for md in root.rglob("SKILL.md"):
+        found = set(root.rglob("SKILL.md"))
+        if not is_plugin:      # rglob doesn't follow folder links (Python 3.13+); skills are often linked in
+            found |= {d / "SKILL.md" for d in root.iterdir() if (d.is_symlink() or getattr(d, "is_junction", bool)()) and (d / "SKILL.md").is_file()}
+        for md in sorted(found):
             if ".git" in md.parts or "node_modules" in md.parts:
                 continue
             plugin = md.relative_to(root).parts[1] if is_plugin and len(md.relative_to(root).parts) > 2 else None

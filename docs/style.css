@@ -101,6 +101,9 @@ main > section + section { border-top: var(--rule-hair) solid var(--color-rule);
 /* the mapping: installed vs upstream */
 .map { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--gap-columns); align-items: center; }
 .verdict { display: grid; gap: var(--space-md); }
+.map--flip { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+.map--flip > .verdict { order: -1; }
+@media (max-width: 60rem) { .map--flip { grid-template-columns: minmax(0, 1fr); } .map--flip > .verdict { order: 0; } }
 .verdict p { color: var(--color-ink-2); }
 .status { display: flex; gap: var(--space-xs); align-items: baseline; font: 600 var(--text-title)/1.2 var(--font-display); color: var(--color-error); }
 @media (max-width: 60rem) { .map { grid-template-columns: minmax(0, 1fr); } }

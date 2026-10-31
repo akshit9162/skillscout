@@ -62,10 +62,19 @@ trusted = [
 # [personas.brand]
 # description = "D2C brand marketing: ad copy, landing pages, Instagram reels"
 # max_skills = 5          # skills preloaded into the agent; each loads in full, so keep it small
+# skills = ["copy"]       # always part of this persona, whatever the keywords say
+# exclude = []            # never part of it
+# plugins = ["marketing"] # on when this persona is active, off when only others are (`persona add` drafts these)
 # [personas.brand.keywords]
 # "ad copy" = 4
 # "landing pages" = 3
 # "instagram" = 2
+
+# `skillscout persona use <name>...` lists only those personas' skills in Claude Code (skillOverrides) and
+# switches pinned plugins (enabledPlugins). It never touches entries you set yourself; --clear undoes it.
+# [switch]
+# core = ["graphify"]     # always listed, whichever persona is active
+# others = "on"           # skills no persona claims: "on" keeps them listed, "off" hides them too
 
 [scoring]
 recommend_at = 0.45     # combined score needed to be recommended

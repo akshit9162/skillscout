@@ -70,6 +70,30 @@ Agent   skillscout persona add brand --about "D2C marketing: ad copy, landing pa
 You     claude --agent brand
 ```
 
+### Switch persona, and the rest stays out of the way
+
+Every installed skill's description loads into every Claude Code session, so a big collection crowds out
+the work. Switch to the persona you're in and Claude Code lists only its skills:
+
+```sh
+skillscout persona use brand            # or say "switch to brand" to the agent
+#  active: brand
+#    hid 31: fastapi, postgres-patterns, seo-audit, ...
+#    plugins on 1: marketing@knowledge-work-plugins
+#    plugins off 2: sales@knowledge-work-plugins, android-skills@android-skills
+skillscout persona use brand builder    # several at once
+skillscout persona start brand          # switch, then start Claude Code (with brand's agent if built)
+skillscout persona use --core           # no persona: only [switch] core and unclaimed skills
+skillscout persona use --clear          # everything back as it was
+```
+
+It writes `skillOverrides` and `enabledPlugins` in `~/.claude/settings.json`: nothing moves on disk.
+A persona claims the skills that fit its keywords, plus any you pin with `skills = [...]`, minus `exclude`.
+Plugins switch whole, so you pin them with `plugins = [...]` (`persona add` drafts them from the plugins
+whose skills fit). skillscout restores only what it changed, never overwrites an override you set, and a
+skill you approve later joins whichever personas it fits. A new session picks the switch up; in an open
+one, run `/reload-skills` and `/reload-plugins`.
+
 From then on, each weekly report has a section per persona, and `persona build` swaps in a better skill when
 one arrives (after you've read and approved it). `persona build` only ever rewrites the agent's `skills:` list:
 its prompt, tone, tools, model and memory are yours.
@@ -186,6 +210,8 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout persona add <name> --about "..." [--keywords "a=3,b=2"]` | Add a persona; keywords drafted from the line unless given |
 | `skillscout persona list` | Each persona: keywords, best installed skills, what's worth installing |
 | `skillscout persona build <name> \| --all [--dry-run]` | Write `~/.claude/agents/<name>.md`, or update only its `skills:` list |
+| `skillscout persona use [<name>...] [--core] [--clear]` | List only these personas' skills and plugins in Claude Code; `--clear` undoes it |
+| `skillscout persona start <name>...` | `persona use`, then start Claude Code |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
 With the index, `discover` makes no GitHub API calls at all. For `--local` and `index`, set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
@@ -195,7 +221,8 @@ With the index, `discover` makes no GitHub API calls at all. For `--local` and `
 - The scanner catches known patterns. It can't prove a skill is safe, so read `show` before you approve.
 - Relevance is keyword matching against your profile, not semantic search. Tune the weights.
 - The scanner is pattern rules, deliberately: a skill is text written to steer a model, so a model judging it can be steered by it. The rules make you read; they don't decide.
-- Every installed skill's description loads into every agent session. Keep the total to a few dozen.
+- Every installed skill's description loads into every agent session. `persona use` keeps only the active
+  personas' skills listed; without it, keep the total to a few dozen.
 - A persona's `skills:` load in full when its agent starts. `max_skills` (default 5) keeps that small.
 
 ## Development

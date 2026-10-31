@@ -12,11 +12,13 @@ NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 
 
 def personas(profile: dict) -> dict[str, dict]:
-    """name -> {"description", "keywords", "agent", "max_skills"} from the profile's [personas.*] tables."""
+    """name -> {"description", "keywords", "agent", "max_skills", "skills", "exclude", "plugins"} from the
+    profile's [personas.*] tables. `skills`/`exclude` pin skills in or out; `plugins` are switched with it."""
     out = {}
     for name, p in profile.get("personas", {}).items():
         out[name] = {"description": p.get("description", ""), "keywords": p.get("keywords", {}),
-                     "agent": p.get("agent", name), "max_skills": p.get("max_skills", 5)}
+                     "agent": p.get("agent", name), "max_skills": p.get("max_skills", 5),
+                     "skills": p.get("skills", []), "exclude": p.get("exclude", []), "plugins": p.get("plugins", [])}
     return out
 
 
@@ -26,7 +28,8 @@ def keyword_sets(profile: dict) -> dict[str, dict[str, float]]:
     return sets | {n: p["keywords"] for n, p in personas(profile).items() if p["keywords"]}
 
 
-def add(profile_path: Path, name: str, description: str, keywords: dict[str, int], agent: str | None = None) -> str:
+def add(profile_path: Path, name: str, description: str, keywords: dict[str, int], agent: str | None = None,
+        plugins: list[str] | None = None) -> str:
     """Append a [personas.<name>] table to the profile file. Refuses a name that's taken."""
     if not NAME.fullmatch(name):
         raise SystemExit(f"persona names are lowercase letters, digits and dashes: {name!r}")
@@ -38,7 +41,9 @@ def add(profile_path: Path, name: str, description: str, keywords: dict[str, int
     block = [f"\n[personas.{name}]", f"description = {json.dumps(description)}"]
     if agent and agent != name:
         block.append(f"agent = {json.dumps(agent)}")
-    block += ["max_skills = 5", f"[personas.{name}.keywords]"] + [f"{json.dumps(k)} = {v}" for k, v in keywords.items()]
+    block += ["max_skills = 5", "skills = []    # always part of this persona", "exclude = []   # never part of it",
+              f"plugins = {json.dumps(plugins or [])}   # switched on with this persona, off when only others are active",
+              f"[personas.{name}.keywords]"] + [f"{json.dumps(k)} = {v}" for k, v in keywords.items()]
     profile_path.write_text(text.rstrip("\n") + "\n" + "\n".join(block) + "\n", encoding="utf-8")
     return "\n".join(block).strip()
 

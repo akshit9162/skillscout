@@ -43,6 +43,22 @@ To set them up:
 
 Never paste the history digest anywhere else or store it; it is the user's own conversation.
 
+### Switching persona
+
+Every installed skill's description loads into every session. Switching keeps only the active personas'
+skills (plus `[switch] core` and skillscout itself) listed, and turns plugins pinned only to other personas off.
+
+- "switch to brand", "brand mode", "I'm doing marketing today": `skillscout persona use brand`
+  (several at once: `persona use brand builder`). Say what it hid and turned off.
+- "show everything again", "turn switching off": `skillscout persona use --clear`.
+- "just the basics", "core only": `skillscout persona use --core`.
+- "which persona am I in": `skillscout persona use`.
+- The change applies to new sessions. In this session, tell the user to run `/reload-skills` and
+  `/reload-plugins`; you can't run those yourself.
+- If the work at hand clearly belongs to an inactive persona, offer to switch; don't switch unasked.
+- To keep a skill with a persona or out of it, or to tie a plugin to it, edit `skills`, `exclude` or
+  `plugins` under `[personas.<name>]` in `~/.skillscout/profile.toml`, then run `persona use` again.
+
 ## Workflow
 
 The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedule` so discovery runs every week, and lead every summary with what is new since the last run.
@@ -86,6 +102,8 @@ The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedul
 | `skillscout persona add <name> --about "..."` | Add a persona; keywords drafted from the line |
 | `skillscout persona list` | Personas, their keywords, best installed skills, what's worth installing |
 | `skillscout persona build <name> \| --all [--dry-run]` | Write or update `~/.claude/agents/<name>.md`'s `skills:` list |
+| `skillscout persona use [<name>...] [--core] [--clear]` | List only these personas' skills and plugins in Claude Code; `--clear` undoes it |
+| `skillscout persona start <name>...` | `persona use`, then start Claude Code (with the persona's agent, if built) |
 | `skillscout schedule` | Weekly job for this OS: launchd, systemd timer, cron line or schtasks (the user turns it on) |
 
 `<id>` is `owner/repo:skill-name`. The bare skill name works when unique.

@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __doc__ as ABOUT, core, github, history, index, persona, schedule
+from . import __doc__ as ABOUT, core, github, history, index, persona, schedule, switch
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
@@ -64,6 +64,12 @@ def main(argv: list[str] | None = None) -> None:
     pb.add_argument("name", nargs="?")
     pb.add_argument("--all", action="store_true")
     pb.add_argument("--dry-run", action="store_true")
+    pu = psub.add_parser("use", help="list only these personas' skills and plugins in Claude Code (no names: show what's active)")
+    pu.add_argument("names", nargs="*")
+    pu.add_argument("--clear", action="store_true", help="undo every change skillscout made: all skills and plugins as before")
+    pu.add_argument("--core", action="store_true", help="no persona: hide every persona's skills and plugins, keep [switch] core")
+    ps = psub.add_parser("start", help="`persona use` these personas, then start Claude Code")
+    ps.add_argument("names", nargs="+")
     a = p.parse_args(argv)
 
     paths = core.Paths()
@@ -123,6 +129,9 @@ def main(argv: list[str] | None = None) -> None:
     elif a.cmd == "approve":
         c = core.find(cands, a.id)
         print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update, fetch=github)}")
+        if on := switch.active(paths):                 # a new skill for an inactive persona stays out of view
+            names = [n for n in on if n != switch.CORE]
+            say_switch(switch.use(profile, paths, names, core.installed_skills(paths), not names), on, quiet=True)
     elif a.cmd == "remove":
         print(f"removed {core.remove(a.id, paths)}")
     elif a.cmd == "rollback":
@@ -147,6 +156,32 @@ def main(argv: list[str] | None = None) -> None:
         print(message)
 
 
+def say_switch(done: dict, names: list[str], quiet: bool = False) -> None:
+    parts = [f"{label} {len(done[k])}: {', '.join(done[k][:8])}{' ...' if len(done[k]) > 8 else ''}"
+             for k, label in (("hidden", "hid"), ("shown", "showed"), ("plugins_off", "plugins off"), ("plugins_on", "plugins on"))
+             if done[k]]
+    if done["kept_yours"]:
+        parts.append(f"left your own skillOverrides alone for {', '.join(done['kept_yours'])}")
+    if quiet and not parts:
+        return
+    print((f"active: {', '.join(names)}" if names else "cleared: every skill and plugin as before skillscout switched them"))
+    for line in parts:
+        print(f"  {line}")
+    if parts:
+        print("A new Claude Code session picks this up; in an open one, run /reload-skills and /reload-plugins.")
+
+
+def start_claude(names: list[str], known: dict, paths: core.Paths) -> None:
+    claude = shutil.which("claude")
+    if not claude:
+        raise SystemExit("claude isn't on PATH; the switch is done, start Claude Code yourself")
+    cmd = [claude]
+    agent = known[names[0]]["agent"] if len(names) == 1 else None
+    if agent and (paths.agents / f"{agent}.md").exists():
+        cmd += ["--agent", agent]
+    sys.exit(subprocess.run(cmd, check=False).returncode)
+
+
 def vocabulary(profile: dict, paths: core.Paths) -> dict[str, int]:
     """Terms skills use, from the cached index (downloaded first if there isn't one)."""
     try:
@@ -167,19 +202,34 @@ def run_persona(a, profile: dict, paths: core.Paths, cands: list[dict]) -> None:
         path = a.profile or USER_PROFILE
         if not path.exists():
             raise SystemExit(f"no profile at {path}; run `skillscout init` first")
-        print(persona.add(path, a.name, a.about, kw, a.agent))
+        print(persona.add(path, a.name, a.about, kw, a.agent, switch.draft_plugins(paths, kw)))
         print(f"\nadded to {path}. Next: `skillscout discover`, then `skillscout persona build {a.name}`")
+        return
+    installed = core.installed_skills(paths)
+    if a.action in ("use", "start"):
+        if a.action == "use" and not a.names and not a.clear and not a.core:
+            on = switch.active(paths)
+            print(f"active: {', '.join(on)}" if on else "no persona active: Claude Code lists every skill")
+            return
+        names = [] if a.action == "use" and a.clear else a.names
+        core_only = a.action == "use" and a.core and not a.clear
+        say_switch(switch.use(profile, paths, names, installed, core_only), names or ([switch.CORE] if core_only else []))
+        if a.action == "start":
+            start_claude(names, known, paths)
         return
     if not known:
         raise SystemExit("no personas yet: add one with `skillscout persona add <name> --about \"...\"`")
-    installed = core.installed_skills(paths)
     if a.action == "list":
+        on = switch.active(paths)
+        by = switch.claims(profile, switch.own_skills(installed))
         for name, p in known.items():
             fits = persona.fitting(installed, p["keywords"], p["max_skills"])
             agent = paths.agents / f"{p['agent']}.md"
             print(f"{name}: {p['description']}\n  keywords: {', '.join(p['keywords'])}\n"
                   f"  agent: {agent}{'' if agent.exists() else ' (not built yet)'}\n"
-                  f"  best installed skills: {', '.join(n for n, _ in fits) or 'none fit yet'}")
+                  f"  best installed skills: {', '.join(n for n, _ in fits) or 'none fit yet'}\n"
+                  f"  switches: {len(by[name])} of your skills, plugins: {', '.join(p['plugins']) or 'none'}"
+                  + ("  (active)" if name in on else ""))
             pending = [c for c in cands if core.recommended(c, profile) and c.get("personas", {}).get(name, 0) >= 0.3][:3]
             if pending:
                 print(f"  worth installing: {', '.join(c['id'] for c in pending)}")
