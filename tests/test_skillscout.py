@@ -566,3 +566,86 @@ def test_plugin_skills_use_plugin_names_and_only_enabled_plugins(tmp_path):
     (paths.skills / "copy" / "SKILL.md").write_text(skill_md("copy", "ad copy"), encoding="utf-8")
     paths.settings.write_text(json.dumps({"enabledPlugins": {"marketing@market": True, "unused@market": False}}), encoding="utf-8")
     assert core.installed_skills(paths) == {"copy": "ad copy", "marketing:draft": "marketing drafting"}
+    real = tmp_path / "elsewhere" / "linked"                  # a skill folder linked in from another place
+    real.mkdir(parents=True)
+    (real / "SKILL.md").write_text(skill_md("linked", "from a link"), encoding="utf-8")
+    link(paths.skills / "linked", real)
+    assert core.installed_skills(paths)["linked"] == "from a link"
+
+
+def switch_env(tmp_path):
+    import json
+    claude = tmp_path / ".claude"
+    paths = core.Paths(tmp_path / "state", claude / "skills", claude / "plugins" / "cache")
+    for name, desc in {"copy": "ad copy for landing pages", "seo-audit": "seo audit of landing pages",
+                       "fastapi": "python fastapi backend", "pg": "postgres backend queries",
+                       "graphify": "knowledge graph", "skillscout": "keep skills current", "mine": "my thing"}.items():
+        (paths.skills / name).mkdir(parents=True)
+        (paths.skills / name / "SKILL.md").write_text(skill_md(name, desc), encoding="utf-8")
+    for plugin, skills in {"marketing": ["ad copy", "landing pages", "email"], "superpowers": ["planning"]}.items():
+        for s in skills:
+            md = paths.plugins / "mk" / plugin / "1.0" / "skills" / s.replace(" ", "-") / "SKILL.md"
+            md.parent.mkdir(parents=True)
+            md.write_text(skill_md(s.replace(" ", "-"), f"{s} work"), encoding="utf-8")
+    original = {"theme": "dark", "skillOverrides": {"mine": "name-only", "pg": "name-only"},
+                "enabledPlugins": {"marketing@mk": False, "superpowers@mk": True}, "z": 1}
+    paths.settings.write_text(json.dumps(original, indent=2) + "\n", encoding="utf-8")
+    profile = {"switch": {"core": ["graphify"]}, "personas": {
+        "brand": {"keywords": {"ad copy": 3, "landing pages": 2, "seo": 2}, "plugins": ["marketing"], "exclude": ["seo-audit"]},
+        "builder": {"keywords": {"backend": 3, "python": 2}, "skills": ["mine"]}}}
+    return paths, profile, original
+
+
+def test_persona_use_hides_other_personas_and_clear_restores_settings_exactly(tmp_path):
+    import json
+    from skillscout import switch
+    paths, profile, original = switch_env(tmp_path)
+    before = paths.settings.read_text(encoding="utf-8")
+    installed = core.installed_skills(paths)
+
+    done = switch.use(profile, paths, ["brand"], installed)
+    s = json.loads(paths.settings.read_text(encoding="utf-8"))
+    # builder's skills are hidden; brand's, core, skillscout and unclaimed ones stay; excluded seo-audit is unclaimed
+    assert s["skillOverrides"] == {"mine": "name-only", "pg": "name-only", "fastapi": "off"}
+    assert done["hidden"] == ["fastapi"] and done["kept_yours"] == ["mine", "pg"]
+    assert s["enabledPlugins"] == {"marketing@mk": True, "superpowers@mk": True}       # unpinned plugin untouched
+    assert list(s) == ["theme", "skillOverrides", "enabledPlugins", "z"]                # your key order kept
+
+    switch.use(profile, paths, ["builder"], core.installed_skills(paths))
+    s = json.loads(paths.settings.read_text(encoding="utf-8"))
+    assert s["skillOverrides"] == {"mine": "name-only", "pg": "name-only", "copy": "off"}
+    assert s["enabledPlugins"]["marketing@mk"] is False
+    assert switch.active(paths) == ["builder"]
+
+    switch.use(profile, paths, [], core.installed_skills(paths), core_only=True)        # --core
+    s = json.loads(paths.settings.read_text(encoding="utf-8"))
+    assert {k for k, v in s["skillOverrides"].items() if v == "off"} == {"copy", "fastapi"}
+    assert s["enabledPlugins"]["marketing@mk"] is False and switch.active(paths) == [switch.CORE]
+
+    switch.use(profile, paths, [], core.installed_skills(paths))                         # --clear
+    assert paths.settings.read_text(encoding="utf-8") == before
+
+
+def test_persona_use_leaves_entries_you_changed_in_between(tmp_path):
+    import json
+    from skillscout import switch
+    paths, profile, _ = switch_env(tmp_path)
+    switch.use(profile, paths, ["builder"], core.installed_skills(paths))
+    s = json.loads(paths.settings.read_text(encoding="utf-8"))
+    s["skillOverrides"]["copy"] = "name-only"            # you set it yourself after skillscout hid it
+    paths.settings.write_text(json.dumps(s), encoding="utf-8")
+    switch.use(profile, paths, [], core.installed_skills(paths))
+    assert json.loads(paths.settings.read_text(encoding="utf-8"))["skillOverrides"]["copy"] == "name-only"
+
+
+def test_others_off_hides_unclaimed_skills_and_plugins_are_drafted(tmp_path):
+    import json
+    from skillscout import switch
+    paths, profile, _ = switch_env(tmp_path)
+    profile["switch"]["others"] = "off"
+    switch.use(profile, paths, ["brand"], core.installed_skills(paths))
+    hidden = {k for k, v in json.loads(paths.settings.read_text(encoding="utf-8"))["skillOverrides"].items() if v == "off"}
+    assert hidden == {"fastapi", "seo-audit"}            # mine/pg are yours; graphify core; skillscout never
+    assert switch.draft_plugins(paths, {"ad copy": 3, "landing pages": 2}) == ["marketing"]
+    with pytest.raises(SystemExit, match="unknown persona"):
+        switch.use(profile, paths, ["nope"], {})
