@@ -1,25 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="860" height="424" viewBox="0 0 860 424" role="img" aria-label="Terminal demo: skillscout discover finds 216 recommended skills with 89 flagged high-risk, refuses to install a high-risk skill without --accept-risk, installs a low-risk one and pins it to a commit">
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="430" viewBox="0 0 860 430" role="img" aria-label="Terminal demo: skillscout init drafts keywords from one line about your work; persona add drafts a brand persona's keywords; discover scores 23,865 skills and lists picks for the brand persona; persona build writes ~/.claude/agents/brand.md with the best installed skills; claude --agent brand starts it">
 <style>
 text{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#c9d1d9;white-space:pre}
-.cmd{fill:#f0f3f6}.dim{fill:#8b949e}.hi{fill:#ff9b8a}.bar{font-size:12px;fill:#8b949e}
-@keyframes a0{0%,2.50%{opacity:0}3.10%,95%{opacity:1}100%{opacity:0}}.l0{animation:a0 16.0s linear infinite}@keyframes a1{0%,10.00%{opacity:0}10.60%,95%{opacity:1}100%{opacity:0}}.l1{animation:a1 16.0s linear infinite}@keyframes a2{0%,11.25%{opacity:0}11.85%,95%{opacity:1}100%{opacity:0}}.l2{animation:a2 16.0s linear infinite}@keyframes a4{0%,20.00%{opacity:0}20.60%,95%{opacity:1}100%{opacity:0}}.l4{animation:a4 16.0s linear infinite}@keyframes a5{0%,25.00%{opacity:0}25.60%,95%{opacity:1}100%{opacity:0}}.l5{animation:a5 16.0s linear infinite}@keyframes a6{0%,26.25%{opacity:0}26.85%,95%{opacity:1}100%{opacity:0}}.l6{animation:a6 16.0s linear infinite}@keyframes a7{0%,27.50%{opacity:0}28.10%,95%{opacity:1}100%{opacity:0}}.l7{animation:a7 16.0s linear infinite}@keyframes a9{0%,36.25%{opacity:0}36.85%,95%{opacity:1}100%{opacity:0}}.l9{animation:a9 16.0s linear infinite}@keyframes a10{0%,41.25%{opacity:0}41.85%,95%{opacity:1}100%{opacity:0}}.l10{animation:a10 16.0s linear infinite}@keyframes a12{0%,50.00%{opacity:0}50.60%,95%{opacity:1}100%{opacity:0}}.l12{animation:a12 16.0s linear infinite}@keyframes a13{0%,55.00%{opacity:0}55.60%,95%{opacity:1}100%{opacity:0}}.l13{animation:a13 16.0s linear infinite}@keyframes a14{0%,62.50%{opacity:0}63.10%,95%{opacity:1}100%{opacity:0}}.l14{animation:a14 16.0s linear infinite}@keyframes a15{0%,66.25%{opacity:0}66.85%,95%{opacity:1}100%{opacity:0}}.l15{animation:a15 16.0s linear infinite}
+.cmd{fill:#f0f3f6}.dim{fill:#8b949e}.hi{fill:#7cc4ff}.bar{font-size:12px;fill:#8b949e}
+@keyframes a0{0%,2.53%{opacity:0}3.13%,95%{opacity:1}100%{opacity:0}}.l0{animation:a0 15.8s linear infinite}@keyframes a1{0%,10.13%{opacity:0}10.73%,95%{opacity:1}100%{opacity:0}}.l1{animation:a1 15.8s linear infinite}@keyframes a3{0%,18.99%{opacity:0}19.59%,95%{opacity:1}100%{opacity:0}}.l3{animation:a3 15.8s linear infinite}@keyframes a4{0%,26.58%{opacity:0}27.18%,95%{opacity:1}100%{opacity:0}}.l4{animation:a4 15.8s linear infinite}@keyframes a6{0%,35.44%{opacity:0}36.04%,95%{opacity:1}100%{opacity:0}}.l6{animation:a6 15.8s linear infinite}@keyframes a7{0%,45.57%{opacity:0}46.17%,95%{opacity:1}100%{opacity:0}}.l7{animation:a7 15.8s linear infinite}@keyframes a8{0%,48.73%{opacity:0}49.33%,95%{opacity:1}100%{opacity:0}}.l8{animation:a8 15.8s linear infinite}@keyframes a9{0%,50.63%{opacity:0}51.23%,95%{opacity:1}100%{opacity:0}}.l9{animation:a9 15.8s linear infinite}@keyframes a10{0%,52.53%{opacity:0}53.13%,95%{opacity:1}100%{opacity:0}}.l10{animation:a10 15.8s linear infinite}@keyframes a12{0%,61.39%{opacity:0}61.99%,95%{opacity:1}100%{opacity:0}}.l12{animation:a12 15.8s linear infinite}@keyframes a13{0%,67.72%{opacity:0}68.32%,95%{opacity:1}100%{opacity:0}}.l13{animation:a13 15.8s linear infinite}@keyframes a14{0%,68.99%{opacity:0}69.59%,95%{opacity:1}100%{opacity:0}}.l14{animation:a14 15.8s linear infinite}@keyframes a15{0%,77.85%{opacity:0}78.45%,95%{opacity:1}100%{opacity:0}}.l15{animation:a15 15.8s linear infinite}
 @media (prefers-reduced-motion:reduce){.l{animation:none!important;opacity:1}}
 </style>
-<rect width="860" height="424" rx="10" fill="#0f1319"/>
+<rect width="860" height="430" rx="10" fill="#0f1319"/>
 <rect width="860" height="34" rx="10" fill="#1a1f27"/><rect y="24" width="860" height="10" fill="#1a1f27"/>
 <circle cx="20" cy="17" r="5" fill="#3a404a"/><circle cx="38" cy="17" r="5" fill="#3a404a"/><circle cx="56" cy="17" r="5" fill="#3a404a"/>
-<text class="bar" x="430.0" y="21" text-anchor="middle">skillscout demo, counts from the 27 Oct 2026 run</text>
-<text class="l cmd l0" x="24" y="54">$ skillscout discover</text>
-<text class="l out l1" x="24" y="76">0 new, 216 recommended, 89 flagged high-risk</text>
-<text class="l dim l2" x="24" y="98">report: ~/.skillscout/reports/2026-10-27.md</text>
-<text class="l cmd l4" x="24" y="142">$ skillscout list -n 3</text>
-<text class="l out l5" x="24" y="164">0.94  low     REC        alirezarezvani/claude-skills:senior-prompt-engineer</text>
-<text class="l out l6" x="24" y="186">0.94  low     REC        github/awesome-copilot:eval-driven-dev</text>
-<text class="l hi l7" x="24" y="208">0.92  high               anthropics/skills:claude-api</text>
-<text class="l cmd l9" x="24" y="252">$ skillscout approve anthropics/skills:claude-api</text>
-<text class="l hi l10" x="24" y="274">anthropics/skills:claude-api has high-risk flags; read it with `show`, then pass --accept-risk</text>
-<text class="l cmd l12" x="24" y="318">$ skillscout approve github/awesome-copilot:eval-driven-dev</text>
-<text class="l out l13" x="24" y="340">installed github/awesome-copilot:eval-driven-dev -&gt; ~/.claude/skills/eval-driven-dev</text>
-<text class="l cmd l14" x="24" y="362">$ skillscout installed</text>
-<text class="l out l15" x="24" y="384">github/awesome-copilot:eval-driven-dev  @d75b418635  2026-10-27T21:04:11+00:00</text>
+<text class="bar" x="430.0" y="21" text-anchor="middle">skillscout demo, real runs on 31 Oct 2026</text>
+<text class="l cmd l0" x="24" y="54">$ skillscout init --about &quot;backend in Python, code review, RL evals, Postgres&quot;</text>
+<text class="l dim l1" x="24" y="76">wrote ~/.skillscout/profile.toml; check the drafted [keywords], then run `skillscout discover`</text>
+<text class="l cmd l3" x="24" y="120">$ skillscout persona add brand --about &quot;D2C marketing: ad copy, landing pages, Instagram reels&quot;</text>
+<text class="l out l4" x="24" y="142">[personas.brand.keywords]  &quot;instagram reels&quot; = 4  &quot;ad copy&quot; = 3  &quot;landing pages&quot; = 2</text>
+<text class="l cmd l6" x="24" y="186">$ skillscout discover</text>
+<text class="l out l7" x="24" y="208">299 recommended for you, 89 relevant but flagged high-risk; 23,865 skills checked</text>
+<text class="l hi l8" x="24" y="230">## For your brand work</text>
+<text class="l out l9" x="24" y="252">- coreyhaines31/marketingskills:ad-creative (57240★)</text>
+<text class="l out l10" x="24" y="274">- irinabuht12-oss/marketing-skills:landing-page-audit (6119★)</text>
+<text class="l cmd l12" x="24" y="318">$ skillscout persona build brand</text>
+<text class="l out l13" x="24" y="340">created ~/.claude/agents/brand.md; added landing-page-design, marketing:content-creation,</text>
+<text class="l out l14" x="24" y="362">  marketing:draft-content, small-business:ad-manager, design-to-motion</text>
+<text class="l cmd l15" x="24" y="384">$ claude --agent brand</text>
 </svg>

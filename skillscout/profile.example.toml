@@ -55,6 +55,18 @@ trusted = [
 "security" = 1
 "design" = 1
 
+# Personas: kinds of work, each with its own keywords and a Claude Code agent (~/.claude/agents/<name>.md)
+# whose skills: list `skillscout persona build <name>` keeps current. Add one with
+# `skillscout persona add <name> --about "what this work is"`, or by hand:
+#
+# [personas.brand]
+# description = "D2C brand marketing: ad copy, landing pages, Instagram reels"
+# max_skills = 5          # skills preloaded into the agent; each loads in full, so keep it small
+# [personas.brand.keywords]
+# "ad copy" = 4
+# "landing pages" = 3
+# "instagram" = 2
+
 [scoring]
 recommend_at = 0.45     # combined score needed to be recommended
 min_relevance = 0.3     # and at least this much keyword overlap with your work

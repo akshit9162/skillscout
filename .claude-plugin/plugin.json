@@ -1,7 +1,7 @@
 {
   "name": "skillscout",
-  "version": "0.2.0",
-  "description": "AI tooling moves weekly. Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, and installs pinned to a commit.",
+  "version": "0.3.0",
+  "description": "AI tooling moves weekly. Keep your agent's skills current for each kind of work you do: a weekly index of every public skill, personas with their own agents, scans before install, pinned commits and upstream diffs.",
   "author": {
     "name": "akshit9162",
     "url": "https://github.com/akshit9162"
@@ -9,6 +9,17 @@
   "homepage": "https://akshit9162.github.io/skillscout",
   "repository": "https://github.com/akshit9162/skillscout",
   "license": "MIT",
-  "keywords": ["skills", "security", "supply-chain", "claude-code", "agent-skills", "discovery"],
-  "skills": ["./skills/skillscout"]
+  "keywords": [
+    "skills",
+    "agent-skills",
+    "claude-code",
+    "personas",
+    "subagents",
+    "discovery",
+    "security",
+    "supply-chain"
+  ],
+  "skills": [
+    "./skills/skillscout"
+  ]
 }

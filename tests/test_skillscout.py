@@ -128,7 +128,7 @@ def test_discover_ranks_flags_and_reports(env):
     assert by["cooking"]["relevance"] == 0
     out, summary = core.report(cands, PROFILE, paths)
     text = out.read_text(encoding="utf-8")
-    assert "me/good:gst-eval" in text and "pipes a download" in text and summary.startswith("3 new, 1 recommended, 1 flagged")
+    assert "me/good:gst-eval" in text and "pipes a download" in text and summary.startswith("1 recommended for you, 1 relevant but flagged")
     # second run: nothing is new
     assert not any(c["new"] for c in core.discover(PROFILE, paths, fetch=gh))
 
@@ -472,3 +472,97 @@ def test_index_verification_needs_a_github_release_and_gh(tmp_path, monkeypatch)
     monkeypatch.setattr(index.shutil, "which", lambda _: None)
     with pytest.raises(index.Unavailable, match="GitHub CLI"):
         index.verify(tmp_path / "i.json.gz", index.URL)
+
+
+def transcript(path: Path, records: list[dict]) -> None:
+    import json
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n", encoding="utf-8")
+
+
+def said(text, when, cwd="/work/shop", **extra):
+    return {"type": "user", "cwd": cwd, "timestamp": when, "message": {"role": "user", "content": text}, **extra}
+
+
+def test_history_keeps_only_what_you_typed_and_splits_episodes(tmp_path):
+    from skillscout import history
+    transcript(tmp_path / "proj" / "s1.jsonl", [
+        {"type": "ai-title", "aiTitle": "Shop launch"},
+        said("write ad copy for the summer sale", "2026-10-01T10:00:00Z"),
+        said("<command-name>/clear</command-name>", "2026-10-01T10:01:00Z"),
+        said("noise", "2026-10-01T10:02:00Z", isMeta=True),
+        {"type": "user", "cwd": "/work/shop", "timestamp": "2026-10-01T10:03:00Z",
+         "message": {"content": [{"type": "tool_result", "content": "secret tool output"}]}},
+        said("see https://example.com/x and <pasted_content id=\"1\">pasted words</pasted_content id=\"1\"> now landing page", "2026-10-01T10:04:00Z"),
+        said("fix the failing postgres test", "2026-10-01T12:00:00Z"),               # two hours later
+        said("and the migration too", "2026-10-01T12:05:00Z", cwd="/work/api"),       # another folder
+    ])
+    eps = history.episodes(tmp_path)
+    assert [len(e["messages"]) for e in sorted(eps, key=lambda e: e["start"])] == [2, 1, 1]
+    first = min(eps, key=lambda e: e["start"])
+    assert first["title"] == "Shop launch" and first["messages"][1] == "see and now landing page"
+    text = history.digest(eps)
+    assert "secret tool output" not in text and "pasted words" not in text and "example.com" not in text
+    assert "· shop · Shop launch ·" in text
+
+
+def test_keywords_from_a_sentence_use_only_terms_skills_use(tmp_path):
+    from skillscout import history
+    records = [{"name": f"s{i}", "description": d} for i, d in enumerate(
+        ["write google ads copy"] * 3 + ["cold email sequences"] * 4 + ["postgres query tuning"] * 3 + ["landing pages"] * 3
+        + ["generic helper"] * 200)]
+    vocab = history.vocabulary(records)
+    kw = history.keywords_from("Google ads, cold email and Postgres; also knitting", vocab)
+    assert set(kw) == {"google ads", "cold email", "postgres"}      # phrases kept whole, across no comma
+    assert "knitting" not in kw and history.keywords_from("knitting", vocab) == {}
+
+
+def test_personas_are_added_scored_and_reported(env, tmp_path):
+    from skillscout import persona
+    paths, gh = env
+    prof = tmp_path / "profile.toml"
+    import tomllib
+    base = Path(core.__file__).with_name("profile.example.toml").read_text(encoding="utf-8")
+    prof.write_text(base, encoding="utf-8")
+    persona.add(prof, "taxes", "GST filing", {"gst": 4, "rl environment": 2})
+    with pytest.raises(SystemExit, match="already"):
+        persona.add(prof, "taxes", "again", {"gst": 1})
+    with pytest.raises(SystemExit, match="lowercase"):
+        persona.add(prof, "../x", "bad", {"gst": 1})
+    profile = core.load_profile(prof) | {"scoring": PROFILE["scoring"] | {"recommend_at": 0.2}}
+    assert persona.personas(profile)["taxes"]["keywords"] == {"gst": 4, "rl environment": 2}
+    cands = core.discover(profile, paths, fetch=gh)
+    gst = core.find(cands, "gst-eval")
+    assert gst["personas"]["taxes"] == 1.0 and gst["relevance"] == 1.0
+    assert "## For your taxes work" in core.report(cands, profile, paths)[0].read_text(encoding="utf-8")
+
+
+def test_agent_file_is_created_then_only_its_skills_change(tmp_path):
+    from skillscout import persona
+    path = tmp_path / "agents" / "brand.md"
+    assert persona.write_agent(path, "brand", "Ads and copy", ["copy", "seo"])[0] == "created"
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith("---\nname: brand\n") and "  - copy\n  - seo\n" in text
+    path.write_text(text.replace("Ads and copy\n\nThe skills", "Ads and copy\n\nMY OWN RULES\n\nThe skills")
+                    .replace("name: brand\n", "name: brand\nmodel: opus\n"), encoding="utf-8")
+    what, added, dropped = persona.write_agent(path, "brand", "ignored now", ["copy", "viral"])
+    text = path.read_text(encoding="utf-8")
+    assert (what, added, dropped) == ("updated", ["viral"], ["seo"])
+    assert "MY OWN RULES" in text and "model: opus" in text and "  - viral\n" in text and "seo" not in text
+    path.write_text("---\nname: x\nskills: [a, b]\ntools: Read\n---\nbody\n", encoding="utf-8")   # inline list form
+    assert persona.write_agent(path, "x", "", ["b", "c"])[1:] == (["c"], ["a"])
+    assert path.read_text(encoding="utf-8") == "---\nname: x\ntools: Read\nskills:\n  - b\n  - c\n---\nbody\n"
+
+
+def test_plugin_skills_use_plugin_names_and_only_enabled_plugins(tmp_path):
+    import json
+    claude = tmp_path / ".claude"
+    paths = core.Paths(tmp_path / "state", claude / "skills", claude / "plugins" / "cache")
+    for plugin in ("marketing", "unused"):
+        md = paths.plugins / "market" / plugin / "1.0.0" / "skills" / "draft" / "SKILL.md"
+        md.parent.mkdir(parents=True)
+        md.write_text(skill_md("draft", f"{plugin} drafting"), encoding="utf-8")
+    (paths.skills / "copy").mkdir(parents=True)
+    (paths.skills / "copy" / "SKILL.md").write_text(skill_md("copy", "ad copy"), encoding="utf-8")
+    paths.settings.write_text(json.dumps({"enabledPlugins": {"marketing@market": True, "unused@market": False}}), encoding="utf-8")
+    assert core.installed_skills(paths) == {"copy": "ad copy", "marketing:draft": "marketing drafting"}

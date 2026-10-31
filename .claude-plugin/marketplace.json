@@ -5,14 +5,14 @@
     "url": "https://github.com/akshit9162"
   },
   "metadata": {
-    "description": "Keep your agent's skills current, safely."
+    "description": "Keep your agent's skills current, for each kind of work you do."
   },
   "plugins": [
     {
       "name": "skillscout",
       "source": "./",
-      "description": "AI tooling moves weekly. Keep your agent's skills current: weekly discovery, upstream diffs, safety scans, and installs pinned to a commit.",
-      "version": "0.2.0",
+      "description": "AI tooling moves weekly. Keep your agent's skills current for each kind of work you do: a weekly index of every public skill, personas with their own agents, scans before install, pinned commits and upstream diffs.",
+      "version": "0.3.0",
       "author": {
         "name": "akshit9162",
         "url": "https://github.com/akshit9162"

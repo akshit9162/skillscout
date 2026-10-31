@@ -12,7 +12,7 @@ from pathlib import Path
 
 import os
 
-from . import github, index
+from . import github, index, persona
 from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
 from .skill import find_skills, parse_frontmatter, safe_name
@@ -26,6 +26,9 @@ PLUGIN_CACHE = HOME / ".claude" / "plugins" / "cache"
 class Paths:
     def __init__(self, state: Path = STATE, skills: Path = SKILLS_DIR, plugins: Path = PLUGIN_CACHE):
         self.state, self.skills, self.plugins = state, skills, plugins
+        claude = plugins.parent.parent                    # ~/.claude
+        self.agents = claude / "agents"
+        self.settings = claude / "settings.json"
         self.cache = state / "repos"
         self.candidates = state / "candidates.json"
         self.crawl = state / "crawl.json"     # the user-independent part of the last crawl (what the index publishes)
@@ -60,17 +63,26 @@ def digest(folder: Path) -> str:
 
 
 def installed_skills(paths: Paths) -> dict[str, str]:
-    """name -> description for user skills and plugin skills (plugin ones as `plugin:name`)."""
+    """name -> description for your skills and for skills of enabled plugins, which are named the way Claude
+    Code names them: `<plugin>:<skill>`. The plugin cache is laid out <marketplace>/<plugin>/<version>/..."""
+    try:
+        enabled = {k.split("@")[0] for k, on in json.loads(paths.settings.read_text(encoding="utf-8"))
+                   .get("enabledPlugins", {}).items() if on}
+    except (OSError, ValueError):
+        enabled = None                                    # no settings file: count every cached plugin
     out = {}
-    for root, prefix in ((paths.skills, ""), (paths.plugins, "plugin")):
+    for root, is_plugin in ((paths.skills, False), (paths.plugins, True)):
         if not root.exists():
             continue
         for md in root.rglob("SKILL.md"):
             if ".git" in md.parts or "node_modules" in md.parts:
                 continue
+            plugin = md.relative_to(root).parts[1] if is_plugin and len(md.relative_to(root).parts) > 2 else None
+            if is_plugin and (plugin is None or (enabled is not None and plugin not in enabled)):
+                continue
             meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
             name = meta.get("name") or md.parent.name
-            out[f"{prefix}:{name}" if prefix else name] = meta.get("description", "")
+            out[f"{plugin}:{name}" if plugin else name] = meta.get("description", "")
     return out
 
 
@@ -238,10 +250,15 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
     pinned = {(e["repo_id"], e["path"]) for e in locked.values() if e.get("repo_id")}
     previous = {c["id"] for c in _read(paths.candidates, [])}
     candidates = []
+    sets = persona.keyword_sets(profile)
     for r in records:
-        rel, hits = relevance(f"{r['name']} {r['description']}", profile["keywords"])
+        text = f"{r['name']} {r['description']}"
+        fit = {name: relevance(text, kw) for name, kw in sets.items()}
+        rel = max((f[0] for f in fit.values()), default=0.0)
+        hits = sorted({h for f in fit.values() for h in f[1]})
         candidates.append({
             **r, "trusted": r["repo"] in trusted, "relevance": round(rel, 3), "matched": hits,
+            "personas": {name: round(f[0], 3) for name, f in fit.items() if name and f[0] > 0},
             "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted),
             "conflicts": conflicts(r["name"], r["description"], installed, profile["scoring"]["overlap_at"]),
             "installed": r["id"] in locked or (r.get("repo_id"), r["path"]) in pinned, "new": r["id"] not in previous,
@@ -296,10 +313,12 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
     rec = [c for c in candidates if recommended(c, profile)]
     flagged = [c for c in candidates if c["risk"] == HIGH and c["relevance"] > 0]
     new = [c for c in candidates if c["new"]]
-    summary = f"{len(new)} new, {len(rec)} recommended, {len(flagged)} flagged high-risk"
-    lines = [f"# Skill report {datetime.now():%Y-%m-%d}", "", summary, "", "## New since last run", ""]
     fresh = [c for c in rec if c["new"]]
-    if new and len(new) == len(candidates):
+    first = bool(new) and len(new) == len(candidates)
+    summary = (f"{len(rec)} recommended for you" + ("" if first else f" ({len(fresh)} new this run)")
+               + f", {len(flagged)} relevant but flagged high-risk; {len(candidates):,} skills checked")
+    lines = [f"# Skill report {datetime.now():%Y-%m-%d}", "", summary, "", "## New since last run", ""]
+    if first:
         lines.append("First run: everything is new. From the next run, this section lists only what appeared since.")
     elif fresh:
         lines += [f"- **`{c['id']}`** ({c['stars']}★, score {c['score']:.2f}): {c['description'][:140]}" for c in fresh[:top]]
@@ -310,6 +329,12 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
     for c in rec[:top]:
         lines.append(f"| {c['score']:.2f} | `{c['id']}`{' 🆕' if c['new'] else ''} | {c['stars']} | {c['risk'] or 'none'} "
                      f"| {', '.join(c['matched'][:4])} | {c['description'][:110]} |")
+    for name in persona.personas(profile):
+        mine = sorted((c for c in rec if c["personas"].get(name, 0) >= profile["scoring"].get("min_relevance", 0.3)),
+                      key=lambda c: (-c["new"], -c["personas"][name], -c["score"]))[:8]
+        lines += ["", f"## For your {name} work", ""]
+        lines += [f"- `{c['id']}`{' 🆕' if c['new'] else ''} ({c['stars']}★): {c['description'][:120]}" for c in mine] \
+            or ["Nothing recommended yet; widen its keywords in your profile."]
     lines += ["", "Install one with `skillscout approve <id>` after reading it with `skillscout show <id>`.", "",
               "## Relevant but blocked", ""]
     for c in [c for c in candidates if c["relevance"] > 0 and not recommended(c, profile) and not c["installed"]][:top]:

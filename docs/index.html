@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>skillscout: keep your agent’s skills current</title>
-<meta name="description" content="Weekly discovery of new agent skills, upstream diffs for the ones you use, and a safety scan of every file before anything installs.">
+<meta name="description" content="Keep your agent’s skills current for each kind of work you do: personas with their own agents, a weekly index of every public skill, upstream diffs, and a scan of every file before anything installs.">
 <meta property="og:title" content="skillscout">
-<meta property="og:description" content="Keep your agent's skills current. Weekly discovery, upstream diffs, a scan of every file.">
+<meta property="og:description" content="Keep your agent's skills current for each kind of work you do. Personas, a weekly index, a scan of every file.">
 <meta property="og:image" content="https://akshit9162.github.io/skillscout/assets/og.png">
 <meta property="og:url" content="https://akshit9162.github.io/skillscout/">
 <meta name="twitter:card" content="summary_large_image">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -24,6 +24,7 @@
   <div class="container">
     <a class="wordmark" href="./">skillscout</a>
     <ul class="nav__links">
+      <li><a href="#personas">Personas</a></li>
       <li><a href="#week">How it works</a></li>
       <li><a href="#updates">Updates</a></li>
       <li><a href="#flags">Flags</a></li>
@@ -39,7 +40,7 @@
     <div class="container hero__grid">
       <div class="hero__text">
         <h1 id="hero-title">Keep your agent’s skills current.</h1>
-        <p class="lead">Weekly discovery, upstream diffs, and a scan of every file first.</p>
+        <p class="lead">For every kind of work you do. Checked weekly, scanned first.</p>
         <div class="hero__actions install" data-switch>
           <div class="tabs" role="tablist" aria-label="Install with">
             <button role="tab" id="tab-plugin" aria-selected="true" aria-controls="panel-plugin">Claude Code plugin</button>
@@ -55,7 +56,7 @@
             <button class="key key--primary key--small" type="button" data-copy="cmd-cli">Copy</button>
           </div>
           <p class="visually-hidden" role="status" aria-live="polite" data-copy-status></p>
-          <p class="terms">MIT licence. Python 3.11+, no dependencies. Weekly scheduling built in on macOS, Linux and Windows.</p>
+          <p class="terms">MIT licence. Python 3.11+, no dependencies. macOS, Linux and Windows.</p>
         </div>
       </div>
       <div class="hero__visual">
@@ -74,7 +75,7 @@ report: ~/.skillscout/reports/2026-10-27.md
 0.88  high               usestrix/strix:managed-pentesting-with-strix
 0.82  -       <span class="rec">REC</span>        coreyhaines31/marketingskills:ad-creative</code></pre>
       </figure>
-      <p class="caption">Score: fit to your keywords, stars, freshness. REC: worth installing. High: a line to read first, like <code>sudo</code> in an install guide. 89 among this profile’s matches, 198 in all.</p>
+      <p class="caption">REC: worth installing. High: a line to read first, like <code>sudo</code> in an install guide.</p>
       </div>
     </div>
     <button class="field-toggle" type="button" data-loop-toggle aria-label="Pause background animation" aria-pressed="false">
@@ -83,19 +84,55 @@ report: ~/.skillscout/reports/2026-10-27.md
     </button>
   </section>
 
+  <section id="personas" aria-labelledby="personas-title">
+    <div class="container">
+      <div class="head">
+        <h2 id="personas-title">One agent per kind of work</h2>
+        <p>Your split, in your words. Each gets an agent kept current.</p>
+      </div>
+      <div class="map">
+        <figure class="graphite">
+          <figcaption class="graphite__bar"><span>personas</span><span>from a real profile</span></figcaption>
+<pre class="wrap" tabindex="0" aria-label="Adding a persona, listing it and building its agent"><code><span class="c">$ skillscout persona add brand --about "D2C marketing: ad copy, landing pages, Instagram reels"</span>
+<span class="t">[personas.brand.keywords]</span>
+"instagram reels" = 4
+"ad copy" = 3
+"landing pages" = 2
+"marketing" = 1
+
+<span class="c">$ skillscout persona build brand</span>
+created ~/.claude/agents/brand.md
+skills:
+  - landing-page-design
+  - marketing:content-creation
+  - marketing:draft-content
+  - small-business:ad-manager
+  - design-to-motion
+
+<span class="c">$ claude --agent brand</span></code></pre>
+        </figure>
+        <div class="verdict">
+          <p class="status">Yours</p>
+          <p>Only the skill list changes. History stays on your machine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="week" aria-labelledby="week-title">
     <div class="container">
       <div class="head">
-        <h2 id="week-title">A week in five commands</h2>
-        <p>New skills appear daily and installed ones change upstream. Read only what moved.</p>
+        <h2 id="week-title">A week in six commands</h2>
+        <p>Read only what moved.</p>
       </div>
       <table class="ledger">
         <thead><tr><th scope="col">Command</th><th scope="col">What happens</th></tr></thead>
         <tbody>
-          <tr><td><code>discover</code></td><td>Searches GitHub, clones skill folders only, scans and scores each skill.</td></tr>
+          <tr><td><code>discover</code></td><td>Scores this week’s index of every public skill against your work, one section per persona.</td></tr>
           <tr><td><code>show &lt;id&gt;</code></td><td>Every flag with file and line, the full SKILL.md, overlaps.</td></tr>
-          <tr><td><code>approve &lt;id&gt;</code></td><td>Copies that one skill, drops symlinks, pins the commit and a content hash.</td></tr>
+          <tr><td><code>approve &lt;id&gt;</code></td><td>Installs that one skill, pinned to its commit. Never overwrites yours.</td></tr>
           <tr><td><code>updates</code></td><td>Diffs each pinned skill against upstream. Nothing is applied.</td></tr>
+          <tr><td><code>persona build</code></td><td>Swaps a better installed skill into that persona’s agent.</td></tr>
           <tr><td><code>schedule</code></td><td>Sets up a weekly job; you turn it on.</td></tr>
         </tbody>
       </table>
@@ -106,7 +143,7 @@ report: ~/.skillscout/reports/2026-10-27.md
     <div class="container">
       <div class="head">
         <h2 id="updates-title">Updates arrive as a diff</h2>
-        <p>When a pinned skill changes upstream, you read the diff first. Taking it re-runs the scan.</p>
+        <p>Read the diff first. Taking it re-runs the scan.</p>
       </div>
       <div class="map">
         <figure class="graphite">
@@ -125,7 +162,7 @@ me/good:gst-eval has high-risk flags; read it with `show`, then pass --accept-ri
         </figure>
         <div class="verdict">
           <p class="status">Refused</p>
-          <p>Your copy stays as it was. Only a person can pass <code>--accept-risk</code>; the bundled skill forbids the agent.</p>
+          <p>Your copy stays. Only a person can pass <code>--accept-risk</code>.</p>
         </div>
       </div>
     </div>
@@ -135,7 +172,7 @@ me/good:gst-eval has high-risk flags; read it with `show`, then pass --accept-ri
     <div class="container">
       <div class="head">
         <h2 id="flags-title">What one run found</h2>
-        <p>Every file in 6,726 skills from 95 repos. A flag means <a href="report.html">read first</a>, not malware.</p>
+        <p>6,726 skills, 27 Oct. A flag means <a href="report.html">read first</a>, not malware.</p>
       </div>
       <table class="ledger levels">
         <thead><tr><th scope="col">Level</th><th scope="col" class="num-col">Skills</th><th scope="col">Examples</th></tr></thead>
@@ -149,28 +186,17 @@ me/good:gst-eval has high-risk flags; read it with `show`, then pass --accept-ri
     </div>
   </section>
 
-  <section aria-labelledby="never-title">
-    <div class="container">
-      <div class="head"><h2 id="never-title">What it never does</h2></div>
-      <ul class="never">
-        <li><h3>Install on its own</h3><p>Discovery only writes a report.</p></li>
-        <li><h3>Overwrite your skills</h3><p>It refuses folders it did not install.</p></li>
-        <li><h3>Follow symlinks</h3><p>A link could point at <code>~/.ssh</code>, so links are dropped.</p></li>
-        <li><h3>Apply updates silently</h3><p>You read the diff first.</p></li>
-      </ul>
-    </div>
-  </section>
 
   <section id="install" aria-labelledby="install-title">
     <div class="container close">
       <div class="close__text">
         <h2 id="install-title">Your first run</h2>
-        <p>With the plugin, ask your agent what’s new; it asks before each install. Set keywords first.</p>
+        <p>With the plugin, ask your agent to set up personas; it asks before reading history and before each install.</p>
         <a class="key" href="https://github.com/akshit9162/skillscout#readme">Read the README</a>
       </div>
       <figure class="graphite">
         <figcaption class="graphite__bar"><span>first run</span><button class="key key--small" type="button" data-copy="cmd-first">Copy</button></figcaption>
-<pre class="wrap" tabindex="0" aria-label="First-run commands"><code id="cmd-first">skillscout init
+<pre class="wrap" tabindex="0" aria-label="First-run commands"><code id="cmd-first">skillscout init --about "what you work on"
 skillscout discover
 skillscout show &lt;id&gt;</code></pre>
       </figure>

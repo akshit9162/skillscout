@@ -6,6 +6,7 @@
   <a href="https://akshit9162.github.io/skillscout">Website</a> &ensp;·&ensp;
   <a href="https://akshit9162.github.io/skillscout/report.html">Report: what's inside 6,726 skills</a> &ensp;·&ensp;
   <a href="#install">Install</a> &ensp;·&ensp;
+  <a href="#personas">Personas</a> &ensp;·&ensp;
   <a href="#a-week-with-skillscout">A week with it</a> &ensp;·&ensp;
   <a href="#how-it-works">How it works</a> &ensp;·&ensp;
   <a href="#what-gets-flagged">What gets flagged</a>
@@ -19,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/demo.svg" width="760" alt="Terminal demo: discover finds 216 recommended skills with 89 flagged high-risk; a high-risk skill is refused without --accept-risk; a low-risk one installs pinned to a commit" />
+  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/demo.svg" width="760" alt="Terminal demo: init drafts keywords from one line; persona add creates a brand persona; discover scores 23,865 skills with a section for the brand persona; persona build writes its agent; claude --agent brand starts it" />
 </p>
 
 ```bash
@@ -32,20 +33,59 @@ AI tooling moves weekly. New skills, plugins and agent workflows land on GitHub 
 installed keep changing upstream, and last month's best practice is already stale. Nobody has time to
 watch hundreds of repos.
 
-**skillscout keeps your agent current.** Once a week it checks the skill ecosystem against what *you*
-work on, tells you what's new and worth having, and shows you exactly what changed in the skills you
-already use.
+**skillscout keeps your agent current, for each kind of work you do.** Every week a shared index of every
+public skill it can find (23,865 from 1,092 repos at the last build) is rebuilt. skillscout scores it on your
+machine against what *you* work on, tells you what's new and worth having, and shows you exactly what
+changed in the skills you already use.
+
+You probably don't do one kind of work. Coding on Monday, a landing page on Tuesday, investor emails on
+Friday. So skillscout keeps **personas**: one per kind of work, each with its own search and its own Claude
+Code agent, loaded with the best skills for that work and kept up to date as better ones appear.
 
 Keeping up fast is only useful if it's safe. A skill is a set of instructions your agent follows
 **with your permissions**, so skillscout scans every file for dangerous patterns, installs nothing without
 your approval, pins each install to an exact commit, and re-scans every update before it can replace anything.
 
-In one run over the public ecosystem it found **6,726 skills in 95 repos**. 198 had at least one high-risk flag,
+In a hand-checked run on 27 Oct 2026 over **6,726 skills in 95 repos**, 198 had at least one high-risk flag,
 mostly `sudo` and `curl | sh` install steps, plus prompt-injection-style text and hidden Unicode.
 The [report](https://akshit9162.github.io/skillscout/report.html) reads every one of the scariest flags: they were defenders.
 
 It's a zero-dependency Python CLI, and it also ships as a skill, so your agent can run the whole loop for you
 and still ask before every install.
+
+## Personas
+
+A persona is one side of your work, in your words. skillscout doesn't ship any: yours might be "builder",
+"brand" and "outreach", someone else's "trading" and "thesis".
+
+```text
+You     "set up personas for me"           (in Claude Code, with the plugin)
+Agent   reads your recent sessions on this machine, with your OK (skillscout history)
+        → proposes: builder · brand · outreach, each with the sessions it came from
+You     keep brand and builder, rename outreach to launches
+Agent   skillscout persona add brand --about "D2C marketing: ad copy, landing pages, Instagram reels"
+        → keywords drafted from terms skills actually use: instagram reels, ad copy, landing pages...
+        skillscout discover                → a "For your brand work" section in the report
+        skillscout persona build brand     → ~/.claude/agents/brand.md, skills: copy, landing-page-design, script...
+You     claude --agent brand
+```
+
+From then on, each weekly report has a section per persona, and `persona build` swaps in a better skill when
+one arrives (after you've read and approved it). `persona build` only ever rewrites the agent's `skills:` list:
+its prompt, tone, tools, model and memory are yours.
+
+The CLI works without the agent too:
+
+```sh
+skillscout persona add brand --about "D2C marketing: ad copy, landing pages, Instagram reels"
+skillscout persona list            # keywords, best installed skills, what's worth installing
+skillscout persona build --all     # write or update ~/.claude/agents/<name>.md
+```
+
+**Your history stays on your machine.** `skillscout history` reads `~/.claude/projects` only when you run it,
+keeps only what you typed (no tool output, no pasted blocks, no links) and sends nothing anywhere. Grouping
+sessions into personas is left to you or the agent in your own session: counting words can't tell short chat
+messages apart reliably, and a wrong persona is worse than none.
 
 ## A week with skillscout
 
@@ -53,7 +93,8 @@ Example session (counts vary week to week):
 
 ```text
 Monday 10:00   skillscout discover --notify     (weekly, via schedule)
-               → "4 new, 23 recommended, 11 flagged high-risk"
+               → "23 recommended for you (4 new this run), 11 relevant but flagged high-risk"
+               → plus a section per persona: "For your brand work", "For your builder work"
 You            skillscout show github/awesome-copilot:eval-driven-dev
                → flags with file:line, the full SKILL.md, overlaps with what you have
 You            skillscout approve eval-driven-dev   → copied, pinned to its commit
@@ -70,17 +111,18 @@ claude plugin marketplace add akshit9162/skillscout
 claude plugin install skillscout@skillscout
 ```
 
-Then ask: *"find me skills for my Python and React work"*. The agent installs the CLI, runs the search,
+Then ask: *"find me skills for my Python and React work"*, or *"set up personas for me"*. The agent installs the CLI, runs the search,
 summarises the report and shows you each skill's flags before asking to install it.
 
 ### As a CLI
 
 ```sh
 pipx install skillscout-cli     # or: uv tool install skillscout-cli
-skillscout init                                              # writes ~/.skillscout/profile.toml
+skillscout init --about "backend in Python, code review, RL evals, Postgres"
 ```
 
-Edit `[keywords]` in `~/.skillscout/profile.toml` with the words from your own work, then:
+`init` writes `~/.skillscout/profile.toml` and drafts `[keywords]` from your line, using only terms that skills
+actually use. Check them, then:
 
 ```sh
 skillscout discover          # score this week's index; writes ~/.skillscout/reports/<date>.md
@@ -139,6 +181,11 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout approve <id> [--update] [--accept-risk] [--to DIR]` | Install and pin. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
 | `skillscout installed` · `skillscout remove <id>` · `skillscout rollback <id>` | Pinned skills · uninstall · undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream |
+| `skillscout init [--about "..."]` | Write the profile; `--about` drafts your keywords from one line |
+| `skillscout history [--days N]` | A local digest of your recent Claude Code sessions, to draft personas from |
+| `skillscout persona add <name> --about "..." [--keywords "a=3,b=2"]` | Add a persona; keywords drafted from the line unless given |
+| `skillscout persona list` | Each persona: keywords, best installed skills, what's worth installing |
+| `skillscout persona build <name> \| --all [--dry-run]` | Write `~/.claude/agents/<name>.md`, or update only its `skills:` list |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
 With the index, `discover` makes no GitHub API calls at all. For `--local` and `index`, set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
@@ -149,6 +196,7 @@ With the index, `discover` makes no GitHub API calls at all. For `--local` and `
 - Relevance is keyword matching against your profile, not semantic search. Tune the weights.
 - The scanner is pattern rules, deliberately: a skill is text written to steer a model, so a model judging it can be steered by it. The rules make you read; they don't decide.
 - Every installed skill's description loads into every agent session. Keep the total to a few dozen.
+- A persona's `skills:` load in full when its agent starts. `max_skills` (default 5) keeps that small.
 
 ## Development
 
