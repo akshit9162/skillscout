@@ -34,7 +34,7 @@ installed keep changing upstream, and last month's best practice is already stal
 watch hundreds of repos.
 
 **skillscout keeps your agent current, for each kind of work you do.** Every week a shared index of every
-public skill it can find (23,865 from 1,092 repos at the last build) is rebuilt. skillscout scores it on your
+public skill it can find (32,360 from 1,173 repos at the last build) is rebuilt. skillscout scores it on your
 machine against what *you* work on, tells you what's new and worth having, and shows you exactly what
 changed in the skills you already use.
 
