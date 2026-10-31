@@ -15,7 +15,7 @@ import os
 from . import github, index
 from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
-from .skill import find_skills, parse_frontmatter
+from .skill import find_skills, parse_frontmatter, safe_name
 
 HOME = Path.home()
 STATE = HOME / ".skillscout"
@@ -32,6 +32,7 @@ class Paths:
         self.index = state / "index.json.gz"  # the last shared index downloaded
         self.repos = state / "repos.json"     # each repo's metadata, push time, checkout and commit at the last run
         self.lock = state / "skills.lock.json"
+        self.backups = state / "backups"     # the copy each install replaced, for `rollback`
         self.reports = state / "reports"
 
 
@@ -44,8 +45,11 @@ def _read(path: Path, default):
 
 
 def _write(path: Path, data) -> None:
+    """Write whole or not at all: a crash mid-write leaves the previous file, never half of one."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    tmp.replace(path)
 
 
 def digest(folder: Path) -> str:
@@ -199,9 +203,13 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
         except Exception:
             tree_of = {}
         licensed = any((root / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"))
+        names = set()
         for sk in find_skills(root):
-            cid = f"{r['full_name']}:{sk.name}"
-            tree = tree_of.get(str(sk.path.relative_to(root)))
+            rel = sk.path.relative_to(root).as_posix()
+            # owner/repo:name, or owner/repo:path/to/skill for a second skill with the same name
+            cid = f"{r['full_name']}:{rel if sk.name in names else sk.name}"
+            names.add(sk.name)
+            tree = tree_of.get(rel)
             key = f"{RULES}:{tree}:{int(licensed)}" if tree else None
             old = previous.get(cid)
             if key and old and old.get("scan_key") == key and not full:     # same files, same rules: the old result stands
@@ -209,8 +217,8 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
             else:
                 flags = [asdict(f) for f in scan(sk.path, root)]
             records.append({
-                "id": cid, "repo": r["full_name"], "name": sk.name, "description": sk.description,
-                "path": str(sk.path.relative_to(root)), "commit": commit, "stars": r["stars"],
+                "id": cid, "repo": r["full_name"], "repo_id": r.get("id"), "name": sk.name, "description": sk.description,
+                "path": rel, "commit": commit, "stars": r["stars"],
                 "license": r["license"], "pushed_at": r["pushed_at"],
                 "flags": flags, "risk": worst(flags), "scan_key": key,
             })
@@ -226,6 +234,8 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
     trusted = set(profile.get("search", {}).get("trusted", []))
     installed = installed_skills(paths)
     locked = _read(paths.lock, {})
+    # A renamed repo keeps its GitHub id, so a skill installed under the old name still counts as installed
+    pinned = {(e["repo_id"], e["path"]) for e in locked.values() if e.get("repo_id")}
     previous = {c["id"] for c in _read(paths.candidates, [])}
     candidates = []
     for r in records:
@@ -234,7 +244,7 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
             **r, "trusted": r["repo"] in trusted, "relevance": round(rel, 3), "matched": hits,
             "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted),
             "conflicts": conflicts(r["name"], r["description"], installed, profile["scoring"]["overlap_at"]),
-            "installed": r["id"] in locked, "new": r["id"] not in previous,
+            "installed": r["id"] in locked or (r.get("repo_id"), r["path"]) in pinned, "new": r["id"] not in previous,
         })
     candidates.sort(key=lambda c: c["score"], reverse=True)
     _write(paths.candidates, candidates)
@@ -246,9 +256,9 @@ def discover(profile: dict, paths: Paths, fetch=github, full: bool = False) -> l
     return score(crawl(profile["search"], paths, fetch, full), profile, paths)
 
 
-def discover_from_index(profile: dict, paths: Paths, url: str = index.URL) -> list[dict]:
+def discover_from_index(profile: dict, paths: Paths, url: str = index.URL, check: bool = False) -> list[dict]:
     """Score the shared weekly index instead of crawling: one download, no GitHub API calls."""
-    idx = index.fetch(url, paths.index)
+    idx = index.fetch(url, paths.index, check)
     print(f"index built {idx['built_at']}: {len(idx['skills'])} skills from {len({s['repo'] for s in idx['skills']})} repos")
     return score(idx["skills"], profile, paths)
 
@@ -256,13 +266,24 @@ def discover_from_index(profile: dict, paths: Paths, url: str = index.URL) -> li
 def ensure_local(c: dict, paths: Paths, fetch=github) -> dict:
     """Fetch the skill and scan it again here, so nothing about it is taken from the index on trust."""
     root, commit = fetch.sync(c["repo"], paths.cache)
-    src = root / c["path"]
-    if not (src / "SKILL.md").exists():
+    src = inside(root, c["path"])
+    if not (src / "SKILL.md").is_file() or (src / "SKILL.md").is_symlink():
         raise SystemExit(f"{c['id']} is no longer at {c['path']} upstream; run `skillscout discover` again")
     flags = [asdict(f) for f in scan(src, root)]
     if commit != c["commit"]:
         print(f"note: upstream moved from {c['commit'][:10]} to {commit[:10]} since the scan; showing the new commit")
-    return {**c, "commit": commit, "flags": flags, "risk": worst(flags)}
+    # The install folder is named from the SKILL.md fetched here, not from the index
+    name = parse_frontmatter((src / "SKILL.md").read_text(errors="ignore")).get("name") or src.name
+    name = name if safe_name(name) else src.name
+    return {**c, "name": name, "commit": commit, "flags": flags, "risk": worst(flags)}
+
+
+def inside(root: Path, rel: str) -> Path:
+    """root/rel, refusing any rel that leads out of root (`../`, an absolute path, a symlinked folder)."""
+    path = (root / rel).resolve()
+    if path != root.resolve() and root.resolve() not in path.parents:
+        raise SystemExit(f"refusing {rel!r}: it points outside the repository")
+    return root / rel
 
 
 def recommended(c: dict, profile: dict) -> bool:
@@ -309,7 +330,7 @@ def find(candidates: list[dict], cid: str) -> dict:
 
 
 def source_dir(c: dict, paths: Paths) -> Path:
-    return paths.cache / c["repo"].replace("/", "__") / c["path"]
+    return inside(paths.cache / c["repo"].replace("/", "__"), c["path"])
 
 
 def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = False, fetch=None) -> Path:
@@ -319,20 +340,74 @@ def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = Fa
         c = ensure_local(c, paths, fetch)
     if c["risk"] == HIGH and not accept_risk:
         raise SystemExit(f"{c['id']} has high-risk flags; read it with `show`, then pass --accept-risk")
-    src, dest = source_dir(c, paths), paths.skills / c["name"]
+    if not safe_name(c["name"]):
+        raise SystemExit(f"refusing to install {c['id']}: {c['name']!r} isn't a plain folder name")
+    repo_dir = paths.cache / c["repo"].replace("/", "__")
+    src, dest = inside(repo_dir, c["path"]), paths.skills / c["name"]
     locked = _read(paths.lock, {})
     if dest.exists():
         ours = locked.get(c["id"], {}).get("digest") == digest(dest)
         if not (replace and ours):
             raise SystemExit(f"{dest} already exists" + ("" if ours else " and wasn't installed by skillscout"))
-        shutil.rmtree(dest)
-    # Symlinks are dropped: following one could copy files from outside the skill (e.g. ~/.ssh)
-    shutil.copytree(src, dest, ignore=lambda d, names: [n for n in names if n == ".git" or Path(d, n).is_symlink()])
     # Pin what is actually in the cache now (an `update` check may have moved it past discovery time)
-    commit = github.git("rev-parse", "HEAD", cwd=paths.cache / c["repo"].replace("/", "__"))
-    locked[c["id"]] = {"repo": c["repo"], "path": c["path"], "commit": commit, "digest": digest(dest),
-                       "dest": str(dest), "installed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    _write(paths.lock, locked)
+    commit = github.git("rev-parse", "HEAD", cwd=repo_dir)
+    # Build the new copy beside the old one, then swap: a failure at any step leaves the old copy in place
+    stage = paths.skills / f".{c['name']}.skillscout-new"
+    shutil.rmtree(stage, ignore_errors=True)
+    paths.skills.mkdir(parents=True, exist_ok=True)
+    # Symlinks are dropped: following one could copy files from outside the skill (e.g. ~/.ssh)
+    shutil.copytree(src, stage, ignore=lambda d, names: [n for n in names if n == ".git" or Path(d, n).is_symlink()])
+    entry = {"repo": c["repo"], "repo_id": c.get("repo_id"), "path": c["path"], "commit": commit, "digest": digest(stage),
+             "dest": str(dest), "installed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    backup = None
+    if dest.exists():
+        backup = paths.backups / _slug(c["id"])
+        shutil.rmtree(backup, ignore_errors=True)
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(dest), str(backup))
+        entry["previous"] = {k: v for k, v in locked[c["id"]].items() if k != "previous"} | {"backup": str(backup)}
+    swapped = False
+    try:
+        stage.rename(dest)
+        swapped = True
+        _write(paths.lock, {**locked, c["id"]: entry})
+    except BaseException:
+        if swapped:
+            shutil.rmtree(dest)
+        if backup:
+            shutil.move(str(backup), str(dest))
+        shutil.rmtree(stage, ignore_errors=True)
+        raise
+    return dest
+
+
+def _slug(cid: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "-._" else "_" for ch in cid)
+
+
+def rollback(cid: str, paths: Paths) -> Path:
+    """Put back the copy the last `approve --update` replaced, and its pin."""
+    locked = _read(paths.lock, {})
+    prev = locked.get(cid, {}).get("previous")
+    if not prev or not Path(prev["backup"]).exists():
+        raise SystemExit(f"no earlier version of {cid} to roll back to")
+    dest, backup = Path(locked[cid]["dest"]), Path(prev.pop("backup"))
+    if dest.exists() and digest(dest) != locked[cid]["digest"]:
+        raise SystemExit(f"{dest} was edited since install; move your changes out first")
+    stage = dest.with_name(f".{dest.name}.skillscout-old")
+    shutil.rmtree(stage, ignore_errors=True)
+    if dest.exists():
+        dest.rename(stage)
+    try:
+        shutil.move(str(backup), str(dest))
+        _write(paths.lock, {**locked, cid: prev})
+    except BaseException:
+        if dest.exists() and stage.exists():
+            shutil.move(str(dest), str(backup))
+        if stage.exists():
+            stage.rename(dest)
+        raise
+    shutil.rmtree(stage, ignore_errors=True)
     return dest
 
 
@@ -341,9 +416,10 @@ def remove(cid: str, paths: Paths) -> Path:
     if cid not in locked:
         raise SystemExit(f"{cid} isn't in the lockfile")
     dest = Path(locked.pop(cid)["dest"])
+    _write(paths.lock, locked)
     if dest.exists():
         shutil.rmtree(dest)
-    _write(paths.lock, locked)
+    shutil.rmtree(paths.backups / _slug(cid), ignore_errors=True)
     return dest
 
 

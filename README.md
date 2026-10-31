@@ -89,22 +89,24 @@ skillscout show <id>         # every flag plus the full SKILL.md, before you dec
 skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
 ```
 
-`<id>` is `owner/repo:skill-name`. The bare skill name works when it's unique.
+`<id>` is `owner/repo:skill-name`. The bare skill name works when it's unique. If one repo has two skills with the same name, the second is `owner/repo:path/to/skill`.
 
 ## How it works
 
 The crawl is the same for everyone, so it runs once a week in this repo's [index workflow](.github/workflows/index.yml) and is published as `index.json.gz`. `skillscout discover` downloads that one file (seconds, no GitHub token, your keywords never leave your machine) and scores it locally. `show` and `approve` fetch the skill and scan it again on your machine, so nothing is installed on the index's word. `discover --local` runs the whole crawl yourself instead.
+
+Each published index carries a signed [build attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations): proof that this repo's index workflow built that exact file. Check one with `gh attestation verify ~/.skillscout/index.json.gz --repo akshit9162/skillscout`, or set `verify = true` under `[index]` and `discover` checks every download and refuses one that fails.
 
 | Step | What happens |
 |---|---|
 | **Discover** (weekly job, or `--local`) | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos, then follows every repo linked from curated lists (your `lists`, plus any `awesome-*` repo it finds). Drops archived, stale (no push in a year), unpopular and huge repos. |
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
-| **Score** (your machine) | 65% relevance to your keywords, 20% stars, 15% freshness, plus a bonus for trusted repos. |
+| **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural), 20% stars, 15% freshness, plus a bonus for trusted repos. |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
 | **Approve** | You pick one. It's fetched and scanned again on your machine (that scan decides), then copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
-| **Update** | `skillscout updates` diffs each pinned skill against upstream and applies nothing. Taking an update re-runs the scan. |
+| **Update** | `skillscout updates` diffs each pinned skill against upstream and applies nothing. Taking an update re-runs the scan, builds the new copy beside the old one and swaps them; if any step fails, the old copy and its pin stay. `skillscout rollback <id>` puts back the version an update replaced. |
 
 ## What gets flagged
 
@@ -120,6 +122,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 
 - Nothing installs without an explicit `approve`.
 - `approve` never overwrites a folder skillscout didn't install, and never follows symlinks.
+- A skill can't name its way out of the skills folder: a `name:` like `../../x` falls back to the folder's own name, and a path that leads outside its repo is refused. The install name comes from the `SKILL.md` fetched on your machine, not from the index.
 - Every install is pinned to a commit and a content hash.
 - Updates are a diff first, and re-scanned before they replace anything. The test suite includes an upstream
   update that slips in `sudo rm -rf /`, and checks that re-approval refuses it.
@@ -133,8 +136,8 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout index [--out FILE]` | Crawl and scan the ecosystem and write the shared index (what the weekly job runs) |
 | `skillscout list [--all] [-n N]` | Ranked candidates |
 | `skillscout show <id>` | Flags, conflicts and the full SKILL.md |
-| `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
-| `skillscout installed` · `skillscout remove <id>` | Pinned skills · uninstall |
+| `skillscout approve <id> [--update] [--accept-risk] [--to DIR]` | Install and pin. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
+| `skillscout installed` · `skillscout remove <id>` · `skillscout rollback <id>` | Pinned skills · uninstall · undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
@@ -144,6 +147,7 @@ With the index, `discover` makes no GitHub API calls at all. For `--local` and `
 
 - The scanner catches known patterns. It can't prove a skill is safe, so read `show` before you approve.
 - Relevance is keyword matching against your profile, not semantic search. Tune the weights.
+- The scanner is pattern rules, deliberately: a skill is text written to steer a model, so a model judging it can be steered by it. The rules make you read; they don't decide.
 - Every installed skill's description loads into every agent session. Keep the total to a few dozen.
 
 ## Development

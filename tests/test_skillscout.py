@@ -1,4 +1,6 @@
 import subprocess
+import sys
+import zlib
 from pathlib import Path
 
 import pytest
@@ -37,7 +39,7 @@ class FakeGitHub:
     def _meta(self, name):
         commits = subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=self.repos[name][0],
                                  capture_output=True, text=True).stdout.strip()
-        return {"full_name": name, "stars": self.repos[name][1], "pushed_at": f"2026-10-{int(commits):02d}T00:00:00Z",
+        return {"full_name": name, "id": zlib.crc32(str(self.repos[name][0]).encode()), "stars": self.repos[name][1], "pushed_at": f"2026-10-{int(commits):02d}T00:00:00Z",
                 "license": "MIT", "archived": False, "description": ""}
 
     def search(self, q, per_page):
@@ -49,6 +51,22 @@ class FakeGitHub:
     def sync(self, name, cache):
         src = self.repos[name][0]
         return src, subprocess.run(["git", "rev-parse", "HEAD"], cwd=src, capture_output=True, text=True).stdout.strip()
+
+
+def link(path: Path, target: Path) -> None:
+    """A directory symlink, or a junction on Windows without symlink rights."""
+    try:
+        path.symlink_to(target, target_is_directory=True)
+    except OSError:
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(path), str(target)], check=True, capture_output=True)
+
+
+def can_symlink(tmp: Path) -> bool:
+    try:
+        (tmp / ".probe").symlink_to(tmp)
+        return True
+    except OSError:
+        return False
 
 
 @pytest.fixture
@@ -65,7 +83,7 @@ def env(tmp_path, monkeypatch):
     # approve() reads the commit from paths.cache/<repo>; point the cache at the fake sources
     paths.cache.mkdir(parents=True)
     for name, (src, _) in gh.repos.items():
-        (paths.cache / name.replace("/", "__")).symlink_to(src)
+        link(paths.cache / name.replace("/", "__"), src)
     return paths, gh
 
 
@@ -95,6 +113,7 @@ def test_relevance_and_conflicts():
     score, hits = relevance("gst-eval Build an RL environment eval", PROFILE["keywords"])
     assert set(hits) == {"rl environment", "gst", "eval"} and score == 1.0
     assert relevance("pasta recipes", PROFILE["keywords"])[0] == 0
+    assert relevance("Evals for RL environments", PROFILE["keywords"])[1] == ["rl environment", "eval"]  # word forms
     installed = {"plugin:tdd": "Use when implementing any feature or bugfix before writing implementation code"}
     assert conflicts("tdd", "anything", installed, 0.35) == ["same name as installed `plugin:tdd`"]
     assert conflicts("x", "Use when implementing any feature or bugfix before code", installed, 0.35)
@@ -161,6 +180,8 @@ def test_find_skills_skips_vendored(tmp_path):
 
 def test_symlinks_are_flagged_and_never_copied(env, tmp_path):
     paths, gh = env
+    if not can_symlink(tmp_path):
+        pytest.skip("this account can't create symlinks")
     secret = tmp_path / "secret.txt"
     secret.write_text("PRIVATE KEY")
     src = gh.repos["me/good"][0]
@@ -369,3 +390,85 @@ def test_approve_rescans_locally_instead_of_trusting_the_index(env):
     with pytest.raises(SystemExit, match="high-risk"):
         core.approve(clean_claim, paths, fetch=gh)
     assert not (paths.skills / "rl-helper").exists()
+
+
+def add_repo(env, tmp_path, name, files, stars=500):
+    paths, gh = env
+    src = tmp_path / "src" / name.replace("/", "_")
+    make_repo(src, {"LICENSE": "MIT", **files})
+    gh.repos[name] = (src, stars)
+    link(paths.cache / name.replace("/", "__"), src)
+    return src
+
+
+def test_a_name_that_is_a_path_never_leaves_the_skills_folder(env, tmp_path):
+    paths, gh = env
+    add_repo(env, tmp_path, "me/evil", {"s/SKILL.md": skill_md("../../escaped", "RL environment eval in python")})
+    c = next(c for c in core.discover(PROFILE, paths, fetch=gh) if c["repo"] == "me/evil")
+    assert c["name"] == "s"                                   # falls back to the folder's own name
+    dest = core.approve(c, paths, fetch=gh)
+    assert dest.parent == paths.skills and not (tmp_path / "escaped").exists()
+
+
+def test_a_tampered_index_cant_point_outside_the_repo(env, tmp_path):
+    paths, gh = env
+    c = core.find(core.discover(PROFILE, paths, fetch=gh), "gst-eval")
+    with pytest.raises(SystemExit, match="outside the repository"):
+        core.approve({**c, "path": "../../.."}, paths, fetch=gh)
+    with pytest.raises(SystemExit, match="plain folder name"):
+        core.approve({**c, "name": "../x"}, paths)
+    dest = core.approve({**c, "name": "../x"}, paths, fetch=gh)  # fetched here: the name comes from the real SKILL.md
+    assert dest == paths.skills / "gst-eval"
+
+
+def test_duplicate_names_in_one_repo_are_both_kept(env, tmp_path):
+    paths, gh = env
+    add_repo(env, tmp_path, "me/dup", {"a/SKILL.md": skill_md("helper", "python eval one"),
+                                       "b/SKILL.md": skill_md("helper", "python eval two")})
+    ids = {c["id"] for c in core.discover(PROFILE, paths, fetch=gh) if c["repo"] == "me/dup"}
+    assert ids == {"me/dup:helper", "me/dup:b"}
+
+
+def test_a_failed_update_keeps_the_old_copy_and_rollback_restores_it(env, monkeypatch):
+    paths, gh = env
+    dest = core.approve(core.find(core.discover(PROFILE, paths, fetch=gh), "gst-eval"), paths)
+    old_pin = core._read(paths.lock, {})["me/good:gst-eval"]
+    src = gh.repos["me/good"][0]
+    (src / "skills/gst-eval/SKILL.md").write_text(skill_md("gst-eval", "Build an RL environment eval", "version two"))
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "u"], cwd=src, check=True)
+    c = core.find(core.discover(PROFILE, paths, fetch=gh), "gst-eval")
+
+    def crash(path, data):
+        raise OSError("disk full")
+    with monkeypatch.context() as m:
+        m.setattr(core, "_write", crash)
+        with pytest.raises(OSError):
+            core.approve(c, paths, replace=True)
+    assert "version two" not in (dest / "SKILL.md").read_text()      # old copy untouched
+    assert core._read(paths.lock, {})["me/good:gst-eval"] == old_pin
+    assert [p.name for p in paths.skills.iterdir()] == ["gst-eval"]   # no staging folder left behind
+
+    core.approve(c, paths, replace=True)
+    assert "version two" in (dest / "SKILL.md").read_text()
+    core.rollback("me/good:gst-eval", paths)
+    assert "version two" not in (dest / "SKILL.md").read_text()
+    assert core._read(paths.lock, {})["me/good:gst-eval"]["commit"] == old_pin["commit"]
+    with pytest.raises(SystemExit, match="no earlier version"):
+        core.rollback("me/good:gst-eval", paths)
+
+
+def test_a_renamed_repo_still_counts_as_installed(env):
+    paths, gh = env
+    core.approve(core.find(core.discover(PROFILE, paths, fetch=gh), "gst-eval"), paths)
+    gh.repos["me/renamed"] = gh.repos.pop("me/good")               # same repo, same GitHub id, new name
+    again = core.find(core.discover(PROFILE, paths, fetch=gh), "me/renamed:gst-eval")
+    assert again["installed"] and not core.recommended(again, PROFILE)
+
+
+def test_index_verification_needs_a_github_release_and_gh(tmp_path, monkeypatch):
+    from skillscout import index
+    with pytest.raises(index.Unavailable, match="isn't a GitHub release"):
+        index.verify(tmp_path / "i.json.gz", "https://example.com/index.json.gz")
+    monkeypatch.setattr(index.shutil, "which", lambda _: None)
+    with pytest.raises(index.Unavailable, match="GitHub CLI"):
+        index.verify(tmp_path / "i.json.gz", index.URL)

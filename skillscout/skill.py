@@ -1,7 +1,15 @@
 """Reading SKILL.md files."""
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# A name becomes a folder under the skills directory, so it can't carry a path: no slashes, no leading dot
+SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._ -]{0,99}")
+
+
+def safe_name(name: str) -> bool:
+    return bool(SAFE_NAME.fullmatch(name)) and ".." not in name and name == name.strip()
 
 
 @dataclass
@@ -39,16 +47,18 @@ def parse_frontmatter(text: str) -> dict[str, str]:
 
 
 def find_skills(root: Path) -> list[Skill]:
-    """Every SKILL.md under root, skipping vendored and VCS folders and duplicate names."""
-    skills, seen = [], set()
+    """Every SKILL.md under root, skipping vendored and VCS folders. A name that isn't a plain folder name
+    (`../x`, `a/b`) falls back to the folder's own name. Duplicate names are kept; the caller tells them apart."""
+    skills = []
     for md in sorted(root.rglob("SKILL.md")):
         if any(part in {".git", "node_modules", "dist", "build"} for part in md.parts) or md.is_symlink() or not md.is_file():
             continue
         meta = parse_frontmatter(md.read_text(errors="ignore"))
         name = meta.get("name") or md.parent.name
-        if name in seen:
-            continue
-        seen.add(name)
+        if not safe_name(name):
+            name = md.parent.name
+            if not safe_name(name):
+                continue
         files = sorted(str(p.relative_to(md.parent)) for p in md.parent.rglob("*") if p.is_file() and not p.is_symlink())
         skills.append(Skill(name, meta.get("description", ""), md.parent, files))
     return skills

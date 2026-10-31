@@ -4,6 +4,10 @@
 # The shared weekly index that `discover` scores. Set url = "" to always crawl locally.
 [index]
 url = "https://github.com/akshit9162/skillscout/releases/download/index/index.json.gz"
+verify = false          # true: check the index's signed GitHub attestation before using it (needs `gh`)
+
+[install]
+# dir = "~/.claude/skills" # where `approve` puts skills; any agent that reads SKILL.md folders works
 
 # Used by `discover --local` (and by the weekly index job, with its own profile).
 [search]

@@ -2,6 +2,9 @@
 
 import gzip
 import json
+import re
+import shutil
+import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -9,7 +12,7 @@ from pathlib import Path
 
 URL = "https://github.com/akshit9162/skillscout/releases/download/index/index.json.gz"
 VERSION = 1
-FIELDS = ("id", "repo", "name", "description", "path", "commit", "stars", "license", "pushed_at", "flags", "risk", "scan_key")
+FIELDS = ("id", "repo", "repo_id", "name", "description", "path", "commit", "stars", "license", "pushed_at", "flags", "risk", "scan_key")
 
 
 class Unavailable(Exception):
@@ -18,7 +21,7 @@ class Unavailable(Exception):
 
 def build(records: list[dict], out: Path, rules: str) -> dict:
     data = {"version": VERSION, "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "rules": rules, "skills": [{k: r[k] for k in FIELDS} for r in records]}
+            "rules": rules, "skills": [{k: r.get(k) for k in FIELDS} for r in records]}
     out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(out, "wt", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
@@ -33,8 +36,24 @@ def load(path: Path) -> dict:
     return data
 
 
-def fetch(url: str, cache: Path) -> dict:
-    """Download the index if it changed since the cached copy (ETag); fall back to the cached copy offline."""
+def verify(path: Path, url: str) -> None:
+    """Check the GitHub attestation the weekly job signs the index with: built by that repo's index workflow,
+    from that repo's code, byte for byte. Needs the GitHub CLI."""
+    m = re.match(r"https://github\.com/([^/]+/[^/]+)/releases/download/", url)
+    if not m:
+        raise Unavailable(f"can't verify an index that isn't a GitHub release download: {url}")
+    if not shutil.which("gh"):
+        raise Unavailable("verifying the index needs the GitHub CLI (`gh`); install it or set [index] verify = false")
+    repo = m.group(1)
+    run = subprocess.run(["gh", "attestation", "verify", str(path), "--repo", repo,
+                          "--signer-workflow", f"{repo}/.github/workflows/index.yml"], capture_output=True, text=True)
+    if run.returncode:
+        raise Unavailable(f"the downloaded index failed verification: {(run.stderr or run.stdout).strip()[:300]}")
+
+
+def fetch(url: str, cache: Path, check: bool = False) -> dict:
+    """Download the index if it changed since the cached copy (ETag); fall back to the cached copy offline.
+    With `check`, a download that fails attestation is discarded."""
     tag = cache.with_suffix(".etag")
     req = urllib.request.Request(url, headers={"User-Agent": "skillscout"})
     if cache.exists() and tag.exists():
@@ -45,6 +64,12 @@ def fetch(url: str, cache: Path) -> dict:
             part = cache.with_suffix(".part")
             part.write_bytes(r.read())
             load(part)                              # a truncated or foreign file never replaces a good one
+            if check:
+                try:
+                    verify(part, url)
+                except Unavailable:
+                    part.unlink()
+                    raise
             part.replace(cache)
             if etag := r.headers.get("ETag"):
                 tag.write_text(etag)

@@ -1,5 +1,6 @@
 """Relevance to your profile, popularity, freshness, and overlap with skills you already have."""
 
+import functools
 import math
 import re
 from datetime import datetime, timezone
@@ -12,10 +13,32 @@ def tokens(text: str) -> set[str]:
     return {w for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
 
 
+def stem(word: str) -> str:
+    """Plural to singular, so `agents` matches `agent`; applied to both sides. Only plurals: stripping `-ing`
+    would make `accounting` match `account`."""
+    if word.endswith("ies") and len(word) > 5:
+        return word[:-3] + "y"
+    if word.endswith(("ches", "shes", "sses", "xes")):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith(("ss", "us", "is")) and len(word) > 3:
+        return word[:-1]
+    return word
+
+
+def _words(text: str) -> str:
+    return " ".join(stem(w) for w in WORD.findall(text.lower()))
+
+
+@functools.lru_cache(maxsize=1024)
+def _phrase(keyword: str) -> str:
+    return _words(keyword)
+
+
 def relevance(text: str, keywords: dict[str, float]) -> tuple[float, list[str]]:
-    """Share of the best achievable keyword weight this text hits, capped so 3 strong matches reach 1."""
-    low = " " + " ".join(WORD.findall(text.lower())) + " "
-    hits = [k for k in keywords if f" {' '.join(WORD.findall(k.lower()))} " in low]
+    """Share of the best achievable keyword weight this text hits, capped so 3 strong matches reach 1.
+    A keyword phrase matches when its words appear in order, in any word form."""
+    low = f" {_words(text)} "
+    hits = [k for k in keywords if f" {_phrase(k)} " in low]
     top = sorted(keywords.values(), reverse=True)[:3]
     return min(sum(keywords[k] for k in hits) / max(sum(top), 1e-9), 1.0), hits
 

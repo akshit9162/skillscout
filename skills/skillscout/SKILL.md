@@ -54,7 +54,7 @@ The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedul
 | `skillscout list [--all] [-n N]` | Ranked candidates; `REC` = recommended |
 | `skillscout show <id>` | Flags plus full SKILL.md |
 | `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
-| `skillscout installed` / `remove <id>` | Pinned skills / uninstall |
+| `skillscout installed` / `remove <id>` / `rollback <id>` | Pinned skills / uninstall / undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout schedule` | Weekly job for this OS: launchd, systemd timer, cron line or schtasks (the user turns it on) |
 

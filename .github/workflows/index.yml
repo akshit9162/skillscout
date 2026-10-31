@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 300
     permissions:
       contents: write     # upload the index to the `index` release
+      id-token: write     # sign the attestation (Sigstore, via GitHub)
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,6 +44,10 @@ jobs:
         with:
           path: ~/.skillscout/*.json
           key: index-state-${{ github.run_id }}
+      # Anyone can check the download came from this workflow: gh attestation verify index.json.gz --repo akshit9162/skillscout
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: index.json.gz
       - name: Publish to the index release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -37,12 +37,15 @@ def main(argv: list[str] | None = None) -> None:
     ix.add_argument("--full", action="store_true", help="ignore caches: fetch every repo and re-scan every skill")
     sh = sub.add_parser("show", help="fetch a candidate, scan it here, print its flags and full SKILL.md")
     sh.add_argument("id")
-    ap = sub.add_parser("approve", help="install one skill into ~/.claude/skills and pin it")
+    ap = sub.add_parser("approve", help="install one skill (into ~/.claude/skills unless [install] dir says otherwise) and pin it")
     ap.add_argument("id")
+    ap.add_argument("--to", type=Path, help="install into this skills folder instead, e.g. another agent's")
     ap.add_argument("--accept-risk", action="store_true", help="install despite high-risk flags")
     ap.add_argument("--update", action="store_true", help="replace a copy skillscout installed earlier")
     rm = sub.add_parser("remove", help="uninstall a skill skillscout installed")
     rm.add_argument("id")
+    rb = sub.add_parser("rollback", help="restore the copy the last `approve --update` replaced")
+    rb.add_argument("id")
     sub.add_parser("installed", help="show pinned skills")
     sub.add_parser("updates", help="diff pinned skills against upstream; applies nothing")
     sub.add_parser("schedule", help="set up weekly discovery for this OS (you turn it on)")
@@ -57,6 +60,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"wrote {USER_PROFILE}; edit [keywords] to match your work, then run `skillscout discover`")
         return
     profile = core.load_profile(a.profile or (USER_PROFILE if USER_PROFILE.exists() else EXAMPLE))
+    if folder := getattr(a, "to", None) or profile.get("install", {}).get("dir"):
+        paths.skills = Path(folder).expanduser()
     cands = core._read(paths.candidates, [])
 
     if a.cmd == "discover":
@@ -65,7 +70,7 @@ def main(argv: list[str] | None = None) -> None:
             cands = core.discover(profile, paths, full=a.full)
         else:
             try:
-                cands = core.discover_from_index(profile, paths, url)
+                cands = core.discover_from_index(profile, paths, url, profile.get("index", {}).get("verify", False))
             except index.Unavailable as e:
                 raise SystemExit(str(e))
         out, summary = core.report(cands, profile, paths)
@@ -94,6 +99,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update, fetch=github)}")
     elif a.cmd == "remove":
         print(f"removed {core.remove(a.id, paths)}")
+    elif a.cmd == "rollback":
+        print(f"restored the previous {a.id} -> {core.rollback(a.id, paths)}")
     elif a.cmd == "installed":
         for cid, e in core._read(paths.lock, {}).items():
             print(f"{cid}  @{e['commit'][:10]}  {e['installed_at']}")

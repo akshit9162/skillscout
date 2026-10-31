@@ -52,7 +52,7 @@ def _get(path: str) -> dict:
 
 
 def _repo(d: dict) -> dict:
-    return {"full_name": d["full_name"], "stars": d.get("stargazers_count", 0), "pushed_at": d.get("pushed_at"),
+    return {"full_name": d["full_name"], "id": d.get("id"), "stars": d.get("stargazers_count", 0), "pushed_at": d.get("pushed_at"),
             "license": (d.get("license") or {}).get("spdx_id"), "archived": d.get("archived", False),
             "description": d.get("description") or "", "size_kb": d.get("size", 0)}
 
