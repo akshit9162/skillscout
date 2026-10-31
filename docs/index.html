@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>skillscout: keep your agent’s skills current</title>
-<meta name="description" content="Keep your agent’s skills current for each kind of work you do: personas with their own agents, a weekly index of every public skill, upstream diffs, and a scan of every file before anything installs.">
+<meta name="description" content="Keep your agent’s skills current for each kind of work you do: personas with their own agents, switching so only that work’s skills load, a weekly index of every public skill, upstream diffs, and a scan of every file before anything installs.">
 <meta property="og:title" content="skillscout">
 <meta property="og:description" content="Keep your agent's skills current for each kind of work you do. Personas, a weekly index, a scan of every file.">
 <meta property="og:image" content="https://akshit9162.github.io/skillscout/assets/og.png">
@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
@@ -25,6 +25,7 @@
     <a class="wordmark" href="./">skillscout</a>
     <ul class="nav__links">
       <li><a href="#personas">Personas</a></li>
+      <li><a href="#switch">Switching</a></li>
       <li><a href="#week">How it works</a></li>
       <li><a href="#updates">Updates</a></li>
       <li><a href="#flags">Flags</a></li>
@@ -119,10 +120,40 @@ skills:
     </div>
   </section>
 
+  <section id="switch" aria-labelledby="switch-title">
+    <div class="container">
+      <div class="head">
+        <h2 id="switch-title">Switch, and the rest stays out</h2>
+        <p>Every installed skill loads into every session. Switch persona, and only that work’s skills and plugins do.</p>
+      </div>
+      <div class="map map--flip">
+        <figure class="graphite">
+          <figcaption class="graphite__bar"><span>skillscout persona use</span><span>one real setup, 1 Nov 2026</span></figcaption>
+<pre class="wrap" tabindex="0" aria-label="Switching to core only, then to the web persona, then clearing"><code><span class="c">$ skillscout persona use --core</span>
+active: (core only)
+  hid 78: agent-eval, agent-harness-construction, ai-regression-testing ...
+  plugins off 10: android-skills, data, finance, hallmark, impeccable ...
+
+<span class="c">$ skillscout persona use web</span>
+active: web
+  showed 25: apple-design, design-taste-frontend, design-to-motion ...
+  plugins on 2: hallmark, impeccable
+
+<span class="c">$ skillscout persona use --clear</span>
+cleared: every skill and plugin as before skillscout switched them</code></pre>
+        </figure>
+        <div class="verdict">
+          <p class="status">Undoable</p>
+          <p>Nothing moves on disk. <code>--clear</code> puts your settings back exactly, and an override you set yourself is never touched.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="week" aria-labelledby="week-title">
     <div class="container">
       <div class="head">
-        <h2 id="week-title">A week in six commands</h2>
+        <h2 id="week-title">A week in seven commands</h2>
         <p>Read only what moved.</p>
       </div>
       <table class="ledger">
@@ -133,6 +164,7 @@ skills:
           <tr><td><code>approve &lt;id&gt;</code></td><td>Installs that one skill, pinned to its commit. Never overwrites yours.</td></tr>
           <tr><td><code>updates</code></td><td>Diffs each pinned skill against upstream. Nothing is applied.</td></tr>
           <tr><td><code>persona build</code></td><td>Swaps a better installed skill into that persona’s agent.</td></tr>
+          <tr><td><code>persona use</code></td><td>Lists only that work’s skills and plugins in Claude Code. <code>--clear</code> undoes it.</td></tr>
           <tr><td><code>schedule</code></td><td>Sets up a weekly job; you turn it on.</td></tr>
         </tbody>
       </table>
