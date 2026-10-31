@@ -9,7 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 API = "https://api.github.com"
 MAX_WAIT = 120  # seconds to wait out one rate-limit window
@@ -102,7 +102,7 @@ def linked_repos(text: str) -> list[str]:
 
 
 def git(*args: str, cwd: Path | None = None, stdin: str | None = None) -> str:
-    return subprocess.run(["git", *args], cwd=cwd, input=stdin, check=True, capture_output=True, text=True,
+    return subprocess.run(["git", *args], cwd=cwd, input=stdin, check=True, capture_output=True, text=True, encoding="utf-8",
                           timeout=120, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"}).stdout.strip()
 
 
@@ -119,8 +119,9 @@ HEAVY = ["png", "jpg", "jpeg", "gif", "webp", "avif", "svg", "ico", "mp4", "mov"
 def _skill_patterns(dest: Path, ref: str) -> list[str]:
     """Sparse-checkout patterns: folders that hold a SKILL.md (minus heavy files and vendored dirs), plus licences."""
     files = git("ls-tree", "-r", "--name-only", ref, cwd=dest).splitlines()
-    dirs = {str(Path(f).parent) for f in files
-            if Path(f).name == "SKILL.md" and not SKIP_DIRS & set(Path(f).parts)}
+    # git paths always use "/", so treat them as POSIX paths on every OS (Windows would turn them into "\\")
+    dirs = {str(PurePosixPath(f).parent) for f in files
+            if PurePosixPath(f).name == "SKILL.md" and not SKIP_DIRS & set(PurePosixPath(f).parts)}
     escape = lambda p: "".join("\\" + c if c in "*?[]!#\\" else c for c in p)
     keep = sorted("/*" if d == "." else f"/{escape(d)}/" for d in dirs)
     drop = [f"!*.{ext}" for ext in HEAVY] + [f"!**/{d}/" for d in sorted(SKIP_DIRS)]

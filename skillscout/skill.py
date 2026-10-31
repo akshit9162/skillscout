@@ -53,7 +53,7 @@ def find_skills(root: Path) -> list[Skill]:
     for md in sorted(root.rglob("SKILL.md")):
         if any(part in {".git", "node_modules", "dist", "build"} for part in md.parts) or md.is_symlink() or not md.is_file():
             continue
-        meta = parse_frontmatter(md.read_text(errors="ignore"))
+        meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
         name = meta.get("name") or md.parent.name
         if not safe_name(name):
             name = md.parent.name

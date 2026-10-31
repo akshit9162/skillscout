@@ -68,7 +68,7 @@ WantedBy=timers.target
 def write(files: dict[Path, str]) -> None:
     for path, text in files.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
 
 
 def here(state: Path) -> tuple[dict[Path, str], str]:

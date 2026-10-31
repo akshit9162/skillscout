@@ -57,7 +57,7 @@ def fetch(url: str, cache: Path, check: bool = False) -> dict:
     tag = cache.with_suffix(".etag")
     req = urllib.request.Request(url, headers={"User-Agent": "skillscout"})
     if cache.exists() and tag.exists():
-        req.add_header("If-None-Match", tag.read_text().strip())
+        req.add_header("If-None-Match", tag.read_text(encoding="utf-8").strip())
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             cache.parent.mkdir(parents=True, exist_ok=True)
@@ -72,7 +72,7 @@ def fetch(url: str, cache: Path, check: bool = False) -> dict:
                     raise
             part.replace(cache)
             if etag := r.headers.get("ETag"):
-                tag.write_text(etag)
+                tag.write_text(etag, encoding="utf-8")
     except urllib.error.HTTPError as e:
         if e.code != 304 and not cache.exists():
             raise Unavailable(f"couldn't download the index ({e.code}); run `skillscout discover --local`")

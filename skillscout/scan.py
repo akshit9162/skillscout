@@ -57,7 +57,7 @@ def _scan_file(f: Path) -> list[tuple[str, str, int | None]]:
         out.append((MEDIUM, "file too large to scan", None))
     else:
         try:
-            text = f.read_text(errors="strict")
+            text = f.read_text(encoding="utf-8", errors="strict")
         except (UnicodeDecodeError, OSError):
             out.append((MEDIUM, "bundled binary file", None))
         else:

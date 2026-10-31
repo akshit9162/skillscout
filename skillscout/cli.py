@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> None:
         if USER_PROFILE.exists():
             raise SystemExit(f"{USER_PROFILE} already exists")
         USER_PROFILE.parent.mkdir(parents=True, exist_ok=True)
-        USER_PROFILE.write_text(EXAMPLE.read_text())
+        USER_PROFILE.write_text(EXAMPLE.read_text(), encoding="utf-8"ncoding="utf-8"))
         print(f"wrote {USER_PROFILE}; edit [keywords] to match your work, then run `skillscout discover`")
         return
     profile = core.load_profile(a.profile or (USER_PROFILE if USER_PROFILE.exists() else EXAMPLE))
@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> None:
             print(f"  [{f['level']}] {f['reason']} — {f['where']}")
         src = core.source_dir(c, paths)
         print(f"\nfiles: {', '.join(sorted(str(x.relative_to(src)) for x in src.rglob('*') if x.is_file()))}\n")
-        print((src / "SKILL.md").read_text(errors="ignore"))
+        print((src / "SKILL.md").read_text(encoding="utf-8", errors="ignore"))
     elif a.cmd == "approve":
         c = core.find(cands, a.id)
         print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update, fetch=github)}")

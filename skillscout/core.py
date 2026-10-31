@@ -37,18 +37,18 @@ class Paths:
 
 
 def load_profile(path: Path) -> dict:
-    return tomllib.loads(path.read_text())
+    return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
 def _read(path: Path, default):
-    return json.loads(path.read_text()) if path.exists() else default
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
 
 
 def _write(path: Path, data) -> None:
     """Write whole or not at all: a crash mid-write leaves the previous file, never half of one."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     tmp.replace(path)
 
 
@@ -68,7 +68,7 @@ def installed_skills(paths: Paths) -> dict[str, str]:
         for md in root.rglob("SKILL.md"):
             if ".git" in md.parts or "node_modules" in md.parts:
                 continue
-            meta = parse_frontmatter(md.read_text(errors="ignore"))
+            meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
             name = meta.get("name") or md.parent.name
             out[f"{prefix}:{name}" if prefix else name] = meta.get("description", "")
     return out
@@ -273,7 +273,7 @@ def ensure_local(c: dict, paths: Paths, fetch=github) -> dict:
     if commit != c["commit"]:
         print(f"note: upstream moved from {c['commit'][:10]} to {commit[:10]} since the scan; showing the new commit")
     # The install folder is named from the SKILL.md fetched here, not from the index
-    name = parse_frontmatter((src / "SKILL.md").read_text(errors="ignore")).get("name") or src.name
+    name = parse_frontmatter((src / "SKILL.md").read_text(encoding="utf-8", errors="ignore")).get("name") or src.name
     name = name if safe_name(name) else src.name
     return {**c, "name": name, "commit": commit, "flags": flags, "risk": worst(flags)}
 
@@ -318,7 +318,7 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
             lines.append(f"- `{c['id']}`: {'; '.join(why[:3])}")
     paths.reports.mkdir(parents=True, exist_ok=True)
     out = paths.reports / f"{datetime.now():%Y-%m-%d}.md"
-    out.write_text("\n".join(lines) + "\n")
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return out, summary
 
 
@@ -434,8 +434,8 @@ def updates(paths: Paths, fetch=github) -> list[tuple[str, str, str]]:
         diff = []
         names = sorted({str(p.relative_to(d)) for d in (old, new) if d.exists() for p in d.rglob("*") if p.is_file()})
         for n in names:
-            a = (old / n).read_text(errors="ignore").splitlines() if (old / n).exists() else []
-            b = (new / n).read_text(errors="ignore").splitlines() if (new / n).exists() else []
+            a = (old / n).read_text(encoding="utf-8", errors="ignore").splitlines() if (old / n).exists() else []
+            b = (new / n).read_text(encoding="utf-8", errors="ignore").splitlines() if (new / n).exists() else []
             diff += difflib.unified_diff(a, b, f"installed/{n}", f"upstream/{n}", lineterm="")
         if diff:
             out.append((cid, commit, "\n".join(diff)))
