@@ -164,7 +164,7 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
         except Exception as e:                      # a failed search falls back to last run's repos below
             print(f"search {q!r} failed: {e}")
             failed = True
-    for name in s.get("trusted", []):
+    for name in [*s.get("trusted", []), *s.get("include", [])]:
         try:
             repos[name] = repos.get(name) or fetch.repo(name)
         except Exception as e:
@@ -176,8 +176,8 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
             repos.setdefault(name, e["meta"])
 
     now = datetime.now(timezone.utc)
-    trusted = set(s.get("trusted", []))
-    keep = [r for r in repos.values() if r["full_name"] in trusted or (
+    always = set(s.get("trusted", [])) | set(s.get("include", []))     # kept whatever their stars or age
+    keep = [r for r in repos.values() if r["full_name"] in always or (
         not r["archived"] and r["stars"] >= s.get("min_stars", 0)
         and r.get("size_kb", 0) <= s.get("max_repo_mb", 300) * 1024
         and freshness(r["pushed_at"], now) > 1 - s.get("max_age_days", 365) / 365)]

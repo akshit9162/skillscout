@@ -37,6 +37,11 @@ trusted = [
   "obra/superpowers",
 ]
 
+# Crawled and kept below min_stars, but with no trusted bonus: new repos we know are skill repos.
+include = [
+  "akshit9162/think",
+]
+
 [keywords]
 
 [scoring]
