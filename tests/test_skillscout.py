@@ -204,7 +204,7 @@ def test_sparse_checkout_keeps_skill_folders_and_drops_heavy_files(tmp_path):
     github.git("sparse-checkout", "set", "--no-cone", "--stdin", cwd=dest,
                stdin="\n".join(github._skill_patterns(dest, "HEAD")) + "\n")
     github.git("reset", "-q", "--hard", "HEAD", cwd=dest)
-    got = sorted(str(p.relative_to(dest)) for p in dest.rglob("*") if p.is_file() and ".git" not in p.parts)
+    got = sorted(p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file() and ".git" not in p.parts)
     assert got == ["LICENSE", "skills/a/SKILL.md", "skills/a/run.py"]
 
 

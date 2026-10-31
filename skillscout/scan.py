@@ -44,16 +44,17 @@ class Flag:
 
 COMPILED = [(level, reason, re.compile(pat), words) for level, reason, pat, words in PATTERNS]
 MAX_FILES = 400       # per skill; a skill at a repo's root can otherwise mean scanning the whole repo
-_file_cache: dict[tuple[str, float], list[tuple[str, str, int | None]]] = {}
+_file_cache: dict[tuple[str, int, int], list[tuple[str, str, int | None]]] = {}
 
 
 def _scan_file(f: Path) -> list[tuple[str, str, int | None]]:
     """(level, reason, line) findings for one file, memoised per run so nested skills don't rescan."""
-    key = (str(f), f.stat().st_mtime)
+    st = f.stat()
+    key = (str(f), st.st_mtime_ns, st.st_size)       # size too: coarse clocks (Windows) give two quick writes one mtime
     if key in _file_cache:
         return _file_cache[key]
     out: list[tuple[str, str, int | None]] = []
-    if f.stat().st_size > MAX_SCAN:
+    if st.st_size > MAX_SCAN:
         out.append((MEDIUM, "file too large to scan", None))
     else:
         try:
