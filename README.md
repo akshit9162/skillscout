@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/header.svg" width="760" alt="skillscout: keep your agent's skills current, safely" />
+  <img src="https://akshit9162.github.io/skillscout/assets/header.svg" width="760" alt="skillscout: keep your agent's skills current, for every kind of work you do" />
 </p>
 
 <p align="center">
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/akshit9162/skillscout/main/docs/assets/demo.svg" width="760" alt="Terminal demo: init drafts keywords from one line; persona add creates a brand persona; discover scores 23,865 skills with a section for the brand persona; persona build writes its agent; claude --agent brand starts it" />
+  <img src="https://akshit9162.github.io/skillscout/assets/demo.svg" width="760" alt="Terminal demo: init drafts keywords from one line; persona add creates a brand persona; discover scores 23,865 skills with a section for the brand persona; persona build writes its agent; claude --agent brand starts it" />
 </p>
 
 ```bash
