@@ -34,7 +34,7 @@ installed keep changing upstream, and last month's best practice is already stal
 watch hundreds of repos.
 
 **skillscout keeps your agent current, for each kind of work you do.** Every week a shared index of every
-public skill it can find (32,360 from 1,173 repos at the last build) is rebuilt. skillscout scores it on your
+public skill it can find (32,895 from 1,211 repos at the last build) is rebuilt. skillscout scores it on your
 machine against what *you* work on, tells you what's new and worth having, and shows you exactly what
 changed in the skills you already use.
 
@@ -193,7 +193,7 @@ report and `show` list them next to skillscout's own flags, and your machine mak
 
 A skill that two or more auditors rate high or critical is blocked like a high-risk flag (`--accept-risk`
 to override). One auditor alone is shown as a note: they disagree often. On the 8 Nov 2026 index, skills.sh
-had audits for 21,253 of 32,360 skills; 384 had two or more severe ratings, and only 100 of those were also
+had audits for 21,509 of 32,895 skills; 399 had two or more severe ratings, and only 108 of those were also
 high under skillscout's rules. The two catch different things, which is the point of having both.
 
 ## Safety rails
