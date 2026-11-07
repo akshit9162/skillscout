@@ -12,7 +12,7 @@ from pathlib import Path
 
 import os
 
-from . import github, index, persona
+from . import audits, github, index, persona
 from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
 from .skill import find_skills, parse_frontmatter, safe_name
@@ -309,7 +309,7 @@ def inside(root: Path, rel: str) -> Path:
 def recommended(c: dict, profile: dict) -> bool:
     sc = profile["scoring"]
     return (c["score"] >= sc["recommend_at"] and c["relevance"] >= sc.get("min_relevance", 0.3) and c["risk"] != HIGH
-            and not c["conflicts"] and not c["installed"])
+            and not audits.blocked(c.get("audits")) and not c["conflicts"] and not c["installed"])
 
 
 def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -> tuple[Path, str]:
@@ -328,10 +328,10 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
     else:
         lines.append("Nothing new that fits your profile.")
     lines += ["", "Run `skillscout updates` to see what changed in the skills you already have.", "",
-              "## Recommended", "", "| Score | Skill | Stars | Risk | Matched | Why |", "|---|---|---|---|---|---|"]
+              "## Recommended", "", "| Score | Skill | Stars | Risk | skills.sh audits | Matched | Why |", "|---|---|---|---|---|---|---|"]
     for c in rec[:top]:
         lines.append(f"| {c['score']:.2f} | `{c['id']}`{' 🆕' if c['new'] else ''} | {c['stars']} | {c['risk'] or 'none'} "
-                     f"| {', '.join(c['matched'][:4])} | {c['description'][:110]} |")
+                     f"| {audits.summary(c.get('audits'))} | {', '.join(c['matched'][:4])} | {c['description'][:110]} |")
     for name in persona.personas(profile):
         mine = sorted((c for c in rec if c["personas"].get(name, 0) >= profile["scoring"].get("min_relevance", 0.3)),
                       key=lambda c: (-c["new"], -c["personas"][name], -c["score"]))[:8]
@@ -342,6 +342,8 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
               "## Relevant but blocked", ""]
     for c in [c for c in candidates if c["relevance"] > 0 and not recommended(c, profile) and not c["installed"]][:top]:
         why = c["conflicts"] + [f"{f['level']}: {f['reason']} ({f['where']})" for f in c["flags"] if f["level"] == HIGH]
+        if audits.blocked(c.get("audits")):
+            why.append(f"skills.sh: {audits.summary(c['audits'])}")
         if why:
             lines.append(f"- `{c['id']}`: {'; '.join(why[:3])}")
     paths.reports.mkdir(parents=True, exist_ok=True)
@@ -368,6 +370,9 @@ def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = Fa
         c = ensure_local(c, paths, fetch)
     if c["risk"] == HIGH and not accept_risk:
         raise SystemExit(f"{c['id']} has high-risk flags; read it with `show`, then pass --accept-risk")
+    if audits.blocked(c.get("audits")) and not accept_risk:
+        raise SystemExit(f"{c['id']}: skills.sh auditors rate it high risk ({audits.summary(c['audits'])}); "
+                         "read it with `show`, then pass --accept-risk")
     if not safe_name(c["name"]):
         raise SystemExit(f"refusing to install {c['id']}: {c['name']!r} isn't a plain folder name")
     repo_dir = paths.cache / c["repo"].replace("/", "__")

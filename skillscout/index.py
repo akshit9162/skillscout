@@ -12,7 +12,7 @@ from pathlib import Path
 
 URL = "https://github.com/akshit9162/skillscout/releases/download/index/index.json.gz"
 VERSION = 1
-FIELDS = ("id", "repo", "repo_id", "name", "description", "path", "commit", "stars", "license", "pushed_at", "flags", "risk", "scan_key")
+FIELDS = ("id", "repo", "repo_id", "name", "description", "path", "commit", "stars", "license", "pushed_at", "flags", "risk", "scan_key", "audits")
 
 
 class Unavailable(Exception):

@@ -168,6 +168,7 @@ Each published index carries a signed [build attestation](https://docs.github.co
 | **Discover** (weekly job, or `--local`) | Runs your GitHub searches (topics like `claude-skills`, `agent-skills`) plus your trusted repos, then follows every repo linked from curated lists (your `lists`, plus any `awesome-*` repo it finds). Drops archived, stale (no push in a year), unpopular and huge repos. |
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
+| **Audit** (weekly job) | Asks [skills.sh](https://skills.sh) for its Gen, Socket and Snyk audits of each skill and stores them in the index. Your machine never calls skills.sh ([below](#second-opinion-from-skillssh)). |
 | **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural), 20% stars, 15% freshness, plus a bonus for trusted repos. |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
@@ -183,6 +184,17 @@ Each published index carries a signed [build attestation](https://docs.github.co
 | **Low** | Other bundled scripts · no licence |
 
 High-risk skills need `--accept-risk`, which the bundled skill tells the agent never to pass on its own.
+
+### Second opinion from skills.sh
+
+[skills.sh](https://skills.sh) runs three outside audits (Gen, Socket and Snyk) and shows them before
+`npx skills add`. skillscout's weekly job fetches the same audits and puts them in the signed index, so the
+report and `show` list them next to skillscout's own flags, and your machine makes no extra calls.
+
+A skill that two or more auditors rate high or critical is blocked like a high-risk flag (`--accept-risk`
+to override). One auditor alone is shown as a note: they disagree often. On the 8 Nov 2026 index, skills.sh
+had audits for 21,253 of 32,360 skills; 384 had two or more severe ratings, and only 100 of those were also
+high under skillscout's rules. The two catch different things, which is the point of having both.
 
 ## Safety rails
 
@@ -201,7 +213,7 @@ High-risk skills need `--accept-risk`, which the bundled skill tells the agent n
 | `skillscout discover [--local [--full]] [--notify]` | Score the weekly index against your profile and write the report. `--local` crawls and scans GitHub on your machine instead; `--full` then ignores the caches; `--notify` sends a desktop notification (macOS, or Linux with `notify-send`) |
 | `skillscout index [--out FILE]` | Crawl and scan the ecosystem and write the shared index (what the weekly job runs) |
 | `skillscout list [--all] [-n N]` | Ranked candidates |
-| `skillscout show <id>` | Flags, conflicts and the full SKILL.md |
+| `skillscout show <id>` | Flags, skills.sh audits, conflicts and the full SKILL.md |
 | `skillscout approve <id> [--update] [--accept-risk] [--to DIR]` | Install and pin. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
 | `skillscout installed` · `skillscout remove <id>` · `skillscout rollback <id>` | Pinned skills · uninstall · undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream |

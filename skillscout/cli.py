@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import __doc__ as ABOUT, core, github, history, index, persona, schedule, switch
+from . import __doc__ as ABOUT, audits, core, github, history, index, persona, schedule, switch
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> None:
             notify(summary)
     elif a.cmd == "index":
         records = core.crawl(profile["search"], paths, full=a.full)
+        print(f"skills.sh audits found for {audits.attach(records):,} of {len(records):,} skills")
         data = index.build(records, a.out, core.RULES)
         print(f"wrote {a.out}: {len(data['skills'])} skills from {len({r['repo'] for r in records})} repos")
     elif a.cmd == "list":
@@ -123,6 +124,8 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps({k: c[k] for k in ("id", "score", "stars", "license", "commit", "risk", "matched", "conflicts")}, indent=2))
         for f in c["flags"]:
             print(f"  [{f['level']}] {f['reason']} — {f['where']}")
+        if "audits" in c:
+            print(f"skills.sh audits (from the weekly index): {audits.summary(c['audits'])}")
         src = core.source_dir(c, paths)
         print(f"\nfiles: {', '.join(sorted(str(x.relative_to(src)) for x in src.rglob('*') if x.is_file()))}\n")
         print((src / "SKILL.md").read_text(encoding="utf-8", errors="ignore"))

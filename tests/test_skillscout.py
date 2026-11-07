@@ -649,3 +649,40 @@ def test_others_off_hides_unclaimed_skills_and_plugins_are_drafted(tmp_path):
     assert switch.draft_plugins(paths, {"ad copy": 3, "landing pages": 2}) == ["marketing"]
     with pytest.raises(SystemExit, match="unknown persona"):
         switch.use(profile, paths, ["nope"], {})
+
+
+def test_index_carries_skills_sh_audits_and_two_severe_votes_block(env, tmp_path):
+    from skillscout import audits, index
+    paths, gh = env
+    records = core.crawl(PROFILE["search"], paths, fetch=gh)
+    calls = []
+
+    def fake(repo, names):
+        calls.append((repo, names))
+        return {"gst-eval": {"ath": {"risk": "high"}, "socket": {"risk": "critical", "alerts": 2}, "snyk": {"risk": "low"}},
+                "cooking": {"snyk": {"risk": "critical"}}} if repo == "me/good" else {}
+
+    assert audits.attach(records, fetcher=fake) == 2
+    assert sorted(calls) == [("me/bad", ["rl-helper"]), ("me/good", ["cooking", "gst-eval"])]   # one request per repo
+    built = tmp_path / "pub" / "index.json.gz"
+    index.build(records, built, "rules")
+    cands = core.discover_from_index(PROFILE, paths, built.as_uri())
+    by = {c["name"]: c for c in cands}
+    assert audits.summary(by["gst-eval"]["audits"]) == "Gen high, Socket critical (2 alerts), Snyk low"
+    assert not core.recommended(by["gst-eval"], PROFILE)
+    assert not audits.blocked(by["cooking"]["audits"])            # one auditor alone is only a note
+    assert audits.summary(by["rl-helper"]["audits"]) == "not audited"
+    text = core.report(cands, PROFILE, paths)[0].read_text(encoding="utf-8")
+    assert "skills.sh: Gen high, Socket critical" in text
+    with pytest.raises(SystemExit, match="skills.sh auditors"):
+        core.approve(by["gst-eval"], paths)
+    assert (core.approve(by["gst-eval"], paths, accept_risk=True) / "SKILL.md").exists()
+
+
+def test_audit_fetch_never_raises(monkeypatch):
+    from skillscout import audits
+
+    def down(*a, **k):
+        raise OSError("offline")
+    monkeypatch.setattr(audits.urllib.request, "urlopen", down)
+    assert audits.fetch("me/good", ["x"]) == {} and audits.fetch("not-a-repo", ["x"]) == {}
