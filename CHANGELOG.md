@@ -3,7 +3,7 @@
 Upgrade with `pipx upgrade skillscout-cli`. Profile format changes are listed under each version; none so far
 needed a migration.
 
-## Unreleased
+## 0.5.1 (8 Nov 2026)
 
 First run:
 - `discover`, `list`, `show`, `approve` and `persona` without a profile now say to run `skillscout init --about "..."`
