@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="860" height="430" viewBox="0 0 860 430" role="img" aria-label="Terminal demo: skillscout init drafts keywords from one line about your work; persona add drafts a brand persona's keywords; discover scores 23,865 skills and lists picks for the brand persona; persona build writes ~/.claude/agents/brand.md with the best installed skills; claude --agent brand starts it">
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="430" viewBox="0 0 860 430" role="img" aria-label="Terminal demo: skillscout init drafts keywords from one line about your work; persona add drafts a brand persona's keywords; discover scores 32,895 skills and lists picks for the brand persona; persona build writes ~/.claude/agents/brand.md with the best installed skills; claude --agent brand starts it">
 <style>
 text{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#c9d1d9;white-space:pre}
 .cmd{fill:#f0f3f6}.dim{fill:#8b949e}.hi{fill:#7cc4ff}.bar{font-size:12px;fill:#8b949e}
@@ -8,18 +8,18 @@ text{font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#c9d1d9
 <rect width="860" height="430" rx="10" fill="#0f1319"/>
 <rect width="860" height="34" rx="10" fill="#1a1f27"/><rect y="24" width="860" height="10" fill="#1a1f27"/>
 <circle cx="20" cy="17" r="5" fill="#3a404a"/><circle cx="38" cy="17" r="5" fill="#3a404a"/><circle cx="56" cy="17" r="5" fill="#3a404a"/>
-<text class="bar" x="430.0" y="21" text-anchor="middle">skillscout demo, real runs on 31 Oct 2026</text>
+<text class="bar" x="430.0" y="21" text-anchor="middle">skillscout demo, real runs on 8 Nov 2026</text>
 <text class="l cmd l0" x="24" y="54">$ skillscout init --about &quot;backend in Python, code review, RL evals, Postgres&quot;</text>
 <text class="l dim l1" x="24" y="76">wrote ~/.skillscout/profile.toml; check the drafted [keywords], then run `skillscout discover`</text>
 <text class="l cmd l3" x="24" y="120">$ skillscout persona add brand --about &quot;D2C marketing: ad copy, landing pages, Instagram reels&quot;</text>
-<text class="l out l4" x="24" y="142">[personas.brand.keywords]  &quot;instagram reels&quot; = 4  &quot;ad copy&quot; = 3  &quot;landing pages&quot; = 2</text>
+<text class="l out l4" x="24" y="142">[personas.brand.keywords]  &quot;instagram reels&quot; = 4  &quot;ad copy&quot; = 3  &quot;landing pages&quot; = 2  &quot;marketing&quot; = 1</text>
 <text class="l cmd l6" x="24" y="186">$ skillscout discover</text>
-<text class="l out l7" x="24" y="208">299 recommended for you, 89 relevant but flagged high-risk; 23,865 skills checked</text>
+<text class="l out l7" x="24" y="208">301 recommended for you, 114 relevant but flagged high-risk; 32,895 skills checked</text>
 <text class="l hi l8" x="24" y="230">## For your brand work</text>
-<text class="l out l9" x="24" y="252">- coreyhaines31/marketingskills:ad-creative (57240★)</text>
-<text class="l out l10" x="24" y="274">- irinabuht12-oss/marketing-skills:landing-page-audit (6119★)</text>
+<text class="l out l9" x="24" y="252">- affaan-m/ECC:marketing-campaign (299152★)</text>
+<text class="l out l10" x="24" y="274">- coreyhaines31/marketingskills:ad-creative (59056★)</text>
 <text class="l cmd l12" x="24" y="318">$ skillscout persona build brand</text>
-<text class="l out l13" x="24" y="340">created ~/.claude/agents/brand.md; added landing-page-design, marketing:content-creation,</text>
-<text class="l out l14" x="24" y="362">  marketing:draft-content, small-business:ad-manager, design-to-motion</text>
+<text class="l out l13" x="24" y="340">created ~/.claude/agents/brand.md; added reel-scout, cro-methodology, design-taste-frontend,</text>
+<text class="l out l14" x="24" y="362">  landing-page-design, pro-motion</text>
 <text class="l cmd l15" x="24" y="384">$ claude --agent brand</text>
 </svg>

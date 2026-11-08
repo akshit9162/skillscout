@@ -17,8 +17,8 @@ command -v skillscout || pipx install skillscout-cli
 skillscout init        # writes ~/.skillscout/profile.toml; skip if it exists
 ```
 
-If `pipx` is missing, use `uv tool install skillscout-cli` or
-`pip install --user skillscout-cli`.
+If `pipx` is missing, use `uv tool install skillscout-cli`. Avoid `pip install --user`: Homebrew and
+system Pythons refuse it (PEP 668).
 
 Ask the user, in one line, what they work on, then `skillscout init --about "<their words>"`. It drafts
 `[keywords]` from terms skills actually use. Show them the drafted keywords and let them edit.
@@ -92,15 +92,15 @@ The point is keeping up: the ecosystem changes weekly. Offer `skillscout schedul
 
 | Command | Does |
 |---|---|
-| `skillscout discover [--local] [--notify]` | Score the weekly index (or crawl here with `--local`), write report |
+| `skillscout discover [--local [--full]] [--notify]` | Score the weekly index (or crawl here with `--local`), write report |
 | `skillscout list [--all] [-n N]` | Ranked candidates; `REC` = recommended |
 | `skillscout show <id>` | Flags plus full SKILL.md |
-| `skillscout approve <id> [--update] [--accept-risk]` | Install and pin |
-| `skillscout installed` / `remove <id>` / `rollback <id>` | Pinned skills / uninstall / undo the last update |
+| `skillscout approve <id> [--update] [--accept-risk] [--to DIR]` | Install and pin. `--update` installs exactly the commit `updates` showed; `--to DIR` (or `[install] dir`) installs for another agent |
+| `skillscout installed` / `remove <id> [--force]` / `rollback <id>` | Pinned skills / uninstall (refuses a copy the user edited unless `--force`) / undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream |
 | `skillscout init --about "..."` | Write the profile, keywords drafted from one line |
 | `skillscout history [--days N]` | Local digest of the user's recent sessions, to draft personas from |
-| `skillscout persona add <name> --about "..."` | Add a persona; keywords drafted from the line |
+| `skillscout persona add <name> --about "..." [--agent NAME]` | Add a persona; keywords drafted from the line |
 | `skillscout persona list` | Personas, their keywords, best installed skills, what's worth installing |
 | `skillscout persona build <name> \| --all [--dry-run]` | Write or update `~/.claude/agents/<name>.md`'s `skills:` list |
 | `skillscout persona use [<name>...] [--core] [--clear]` | List only these personas' skills and plugins in Claude Code; `--clear` undoes it |

@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://akshit9162.github.io/skillscout/assets/demo.svg" width="760" alt="Terminal demo: init drafts keywords from one line; persona add creates a brand persona; discover scores 23,865 skills with a section for the brand persona; persona build writes its agent; claude --agent brand starts it" />
+  <img src="https://akshit9162.github.io/skillscout/assets/demo.svg" width="760" alt="Terminal demo: init drafts keywords from one line; persona add creates a brand persona; discover scores 32,895 skills with a section for the brand persona; persona build writes its agent; claude --agent brand starts it" />
 </p>
 
 ```bash
@@ -209,24 +209,24 @@ high under skillscout's rules. The two catch different things, which is the poin
 
 | Command | Does |
 |---|---|
-| `skillscout init` | Copy the example profile to `~/.skillscout/profile.toml` |
 | `skillscout discover [--local [--full]] [--notify]` | Score the weekly index against your profile and write the report. `--local` crawls and scans GitHub on your machine instead; `--full` then ignores the caches; `--notify` sends a desktop notification (macOS, or Linux with `notify-send`) |
-| `skillscout index [--out FILE]` | Crawl and scan the ecosystem and write the shared index (what the weekly job runs) |
-| `skillscout list [--all] [-n N]` | Ranked candidates |
+| `skillscout index [--out FILE] [--full]` | Crawl and scan the ecosystem and write the shared index (what the weekly job runs); `--full` ignores the caches |
+| `skillscout list [--all] [-n N]` | Ranked candidates; copies of one skill in forks show once |
 | `skillscout show <id>` | Flags, skills.sh audits, conflicts and the full SKILL.md |
-| `skillscout approve <id> [--update] [--accept-risk] [--to DIR]` | Install and pin. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
-| `skillscout installed` · `skillscout remove <id>` · `skillscout rollback <id>` | Pinned skills · uninstall · undo the last update |
-| `skillscout updates` | Diff pinned skills against upstream |
+| `skillscout approve <id> [--update] [--commit SHA] [--accept-risk] [--to DIR]` | Install and pin. `--update` installs exactly the commit `updates` showed you (or `--commit`), and refuses if upstream moved since. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
+| `skillscout installed` · `skillscout remove <id> [--force]` · `skillscout rollback <id>` | Pinned skills · uninstall (`--force` if you edited it) · undo the last update |
+| `skillscout updates` | Diff pinned skills against upstream; symlinks are named, never read |
 | `skillscout init [--about "..."]` | Write the profile; `--about` drafts your keywords from one line |
 | `skillscout history [--days N]` | A local digest of your recent Claude Code sessions, to draft personas from |
-| `skillscout persona add <name> --about "..." [--keywords "a=3,b=2"]` | Add a persona; keywords drafted from the line unless given |
+| `skillscout persona add <name> --about "..." [--keywords "a=3,b=2"] [--agent NAME]` | Add a persona; keywords drafted from the line unless given; `--agent` names its agent file if not the persona's name |
 | `skillscout persona list` | Each persona: keywords, best installed skills, what's worth installing |
 | `skillscout persona build <name> \| --all [--dry-run]` | Write `~/.claude/agents/<name>.md`, or update only its `skills:` list |
 | `skillscout persona use [<name>...] [--core] [--clear]` | List only these personas' skills and plugins in Claude Code; `--clear` undoes it |
 | `skillscout persona start <name>...` | `persona use`, then start Claude Code |
+| `skillscout --version` | The installed version |
 | `skillscout schedule` | Set up weekly discovery: launchd on macOS, a systemd timer on Linux (cron line without systemd), a `schtasks` command on Windows. It prints the one command that turns it on |
 
-With the index, `discover` makes no GitHub API calls at all. For `--local` and `index`, set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
+With the index, `discover` makes no GitHub API calls at all. If your network resets GitHub release downloads, it fetches the same signed file from a mirror (raw.githubusercontent.com, then jsDelivr). For `--local` and `index`, set `GITHUB_TOKEN`, or just be logged in with the GitHub CLI (`gh auth login`), for higher API rate limits (5,000 requests an hour instead of 60). Following lists costs one lookup per linked repo: up to 1,500 a run with a token, 40 without; links not yet checked go first, so later runs reach the rest. A token is optional: without it, a rate limit means waiting rather than failing. A weekly run with few upstream changes takes about 25 seconds; the first run takes a few minutes. Scheduled jobs don't see your shell's environment, so add the token to the job if you want it there.
 
 ## Limits
 
