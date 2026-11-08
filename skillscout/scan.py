@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .skill import licensed
+
 HIGH, MEDIUM, LOW = "high", "medium", "low"
 
 # (level, reason, regex, trigger words). Regexes run on lowercased text and only when a trigger word
@@ -98,7 +100,7 @@ def scan(skill_dir: Path, repo_root: Path | None = None) -> list[Flag]:
             flags.append(Flag(MEDIUM, f"more than {MAX_FILES} files; the rest weren't scanned", "."))
             break
         flags += [Flag(level, reason, f"{rel}:{line}" if line else rel) for level, reason, line in _scan_file(f)]
-    if repo_root and not any((repo_root / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING")):
+    if repo_root and not licensed(repo_root):
         flags.append(Flag(LOW, "repo has no licence file", "repo"))
     return flags
 

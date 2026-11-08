@@ -11,6 +11,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path, PurePosixPath
 
+from .skill import VENDORED
+
 API = "https://api.github.com"
 MAX_WAIT = 120  # seconds to wait out one rate-limit window
 TRIES = 4
@@ -106,7 +108,7 @@ def git(*args: str, cwd: Path | None = None, stdin: str | None = None) -> str:
                           timeout=120, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"}).stdout.strip()
 
 
-SKIP_DIRS = {"node_modules", "dist", "build", ".git"}
+SKIP_DIRS = VENDORED
 
 
 # Media, fonts and archives aren't needed to judge a skill and are most of the bytes in big repos.
@@ -145,10 +147,15 @@ class Stale(Exception):
         self.root, self.commit = root, commit
 
 
+def cache_dir(cache: Path, full_name: str) -> Path:
+    """Where a repo's checkout lives: the one place this layout is decided."""
+    return cache / full_name.replace("/", "__")
+
+
 def sync(full_name: str, cache: Path) -> tuple[Path, str]:
     """Sparse, shallow clone (only skill folders are downloaded) or refresh. Returns (path, commit).
     Never runs repo code."""
-    dest = cache / full_name.replace("/", "__")
+    dest = cache_dir(cache, full_name)
     if (dest / ".git").exists():
         for attempt in range(2):
             try:

@@ -9,34 +9,18 @@ skillscout only changes back what it changed: it remembers each entry's value be
 restores that when the entry is no longer needed, and leaves alone anything you edited in between. Your own
 skillOverrides entries are never overwritten. `persona use --clear` puts everything back."""
 
-import json
-from pathlib import Path
-
 from .persona import fitting, personas
-from .skill import parse_frontmatter
+from .skill import plugin_skills
+from .store import read_json, write_json
 
 SELF = "skillscout"          # its own skill and plugin are never hidden
 ALL = 10**6
 
 
-def plugin_skills(paths) -> dict[str, dict[str, str]]:
-    """plugin name -> {skill: description} for every plugin in the cache, enabled or not."""
-    out: dict[str, dict[str, str]] = {}
-    if not paths.plugins.exists():
-        return out
-    for md in paths.plugins.rglob("SKILL.md"):
-        rel = md.relative_to(paths.plugins).parts
-        if len(rel) < 3 or ".git" in rel or "node_modules" in rel:
-            continue
-        meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
-        out.setdefault(rel[1], {})[meta.get("name") or md.parent.name] = meta.get("description", "")
-    return out
-
-
 def draft_plugins(paths, keywords: dict, at: float = 0.25) -> list[str]:
     """Plugins most of whose skills fit a persona's keywords (at least two, and a quarter of them)."""
     out = []
-    for name, skills in sorted(plugin_skills(paths).items()):
+    for name, skills in sorted(plugin_skills(paths.plugins).items()):
         if name == SELF:
             continue
         fit = len(fitting(skills, keywords, ALL))
@@ -81,24 +65,12 @@ def plan(profile: dict, own: dict[str, str], enabled: dict, active: list[str]) -
     return hide, plugins
 
 
-def _load(path: Path, default):
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
-
-
-def _save(path: Path, data) -> None:
-    """Atomic, and keeps the file's key order (settings.json is yours, not ours to reshuffle)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".skillscout.tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    tmp.replace(path)
-
-
 def apply(paths, active: list[str], hide: set[str], plugins: dict[str, bool]) -> dict:
     """Make settings.json match the plan and report what changed. State (~/.skillscout/switch.json) keeps,
     for each entry skillscout set, the value it had before; an entry you changed since is yours again."""
     state_path = paths.state / "switch.json"
-    state = _load(state_path, {"active": [], "skills": {}, "plugins": {}})
-    settings = _load(paths.settings, {})
+    state = read_json(state_path, {"active": [], "skills": {}, "plugins": {}})
+    settings = read_json(paths.settings, {})
     over = dict(settings.get("skillOverrides", {}))
     ep = dict(settings.get("enabledPlugins", {}))
     done = {"hidden": [], "shown": [], "plugins_on": [], "plugins_off": [], "kept_yours": []}
@@ -142,14 +114,14 @@ def apply(paths, active: list[str], hide: set[str], plugins: dict[str, bool]) ->
             settings.pop("skillOverrides", None)
         if ep or "enabledPlugins" in settings:
             settings["enabledPlugins"] = ep
-        _save(paths.settings, settings)
+        write_json(paths.settings, settings, sort_keys=False)   # keeps your key order
     state["active"] = active
-    _save(state_path, state)
+    write_json(state_path, state)
     return done
 
 
 def active(paths) -> list[str]:
-    return _load(paths.state / "switch.json", {}).get("active", [])
+    return read_json(paths.state / "switch.json", {}).get("active", [])
 
 
 CORE = "(core only)"
@@ -164,6 +136,6 @@ def use(profile: dict, paths, names: list[str], installed: dict[str, str], core_
         raise SystemExit(f"unknown persona {', '.join(unknown)}; you have {', '.join(known) or 'none'}")
     if not names and not core_only:
         return apply(paths, [], set(), {})
-    enabled = _load(paths.settings, {}).get("enabledPlugins", {})
+    enabled = read_json(paths.settings, {}).get("enabledPlugins", {})
     hide, plugins = plan(profile, own_skills(installed), enabled, names)
     return apply(paths, names or [CORE], hide, plugins)

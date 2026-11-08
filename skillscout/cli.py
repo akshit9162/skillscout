@@ -1,16 +1,27 @@
 """skillscout command line."""
 
 import argparse
-import json
 import shutil
 import subprocess
 import sys
+from importlib import metadata
 from pathlib import Path
 
-from . import __doc__ as ABOUT, audits, core, github, history, index, persona, schedule, switch
+from . import __doc__ as ABOUT, audits, core, github, history, index, install, persona, schedule, switch
+from .skill import skill_files
+from .store import toml_str, write_toml
 
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
+START = 'start with:  skillscout init --about "what you work on"'
+PERSONAL = {"discover", "list", "show", "approve", "persona"}     # meaningless without your own keywords
+
+
+def version() -> str:
+    try:
+        return metadata.version("skillscout-cli")
+    except metadata.PackageNotFoundError:
+        return "unknown"
 
 
 def notify(text: str) -> None:
@@ -20,78 +31,81 @@ def notify(text: str) -> None:
         subprocess.run(["notify-send", "skillscout", text], check=False)
 
 
-def main(argv: list[str] | None = None) -> None:
-    p = argparse.ArgumentParser(prog="skillscout", description=ABOUT)
-    p.add_argument("--profile", type=Path, default=None, help="default: ~/.skillscout/profile.toml, else the example")
-    sub = p.add_subparsers(dest="cmd", required=True)
+def parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="skillscout", description=ABOUT, epilog=START)
+    p.add_argument("--version", action="version", version=f"skillscout {version()}")
+    p.add_argument("--profile", type=Path, default=None, help="default: ~/.skillscout/profile.toml")
+    sub = p.add_subparsers(dest="cmd", metavar="command")
     it = sub.add_parser("init", help="write ~/.skillscout/profile.toml")
     it.add_argument("--about", help="one line about your work; becomes your keywords (e.g. \"backend in Python, RL evals, Postgres\")")
     d = sub.add_parser("discover", help="score this week's shared index against your profile and write a report")
     d.add_argument("--local", action="store_true", help="crawl and scan GitHub on this machine instead of using the index")
     d.add_argument("--full", action="store_true", help="with --local: ignore caches, fetch every repo and re-scan every skill")
     d.add_argument("--notify", action="store_true", help="desktop notification with the summary (macOS, or Linux with notify-send)")
-    ls = sub.add_parser("list", help="show scored candidates")
+    ls = sub.add_parser("list", help="show scored candidates, best first (copies of one skill show once)")
     ls.add_argument("--all", action="store_true", help="include zero-relevance skills")
-    ls.add_argument("-n", type=int, default=30)
+    ls.add_argument("-n", type=int, default=30, metavar="N", help="how many rows (default 30)")
     ix = sub.add_parser("index", help="crawl and scan the ecosystem and write the shared index (what the weekly job runs)")
-    ix.add_argument("--out", type=Path, default=Path("index.json.gz"))
+    ix.add_argument("--out", type=Path, default=Path("index.json.gz"), help="where to write it (default index.json.gz)")
     ix.add_argument("--full", action="store_true", help="ignore caches: fetch every repo and re-scan every skill")
     sh = sub.add_parser("show", help="fetch a candidate, scan it here, print its flags and full SKILL.md")
-    sh.add_argument("id")
+    sh.add_argument("id", help="owner/repo:skill, or just the skill name if it's unique")
     ap = sub.add_parser("approve", help="install one skill (into ~/.claude/skills unless [install] dir says otherwise) and pin it")
-    ap.add_argument("id")
-    ap.add_argument("--to", type=Path, help="install into this skills folder instead, e.g. another agent's")
+    ap.add_argument("id", help="owner/repo:skill, or just the skill name if it's unique")
+    ap.add_argument("--to", type=Path, metavar="DIR", help="install into this skills folder instead, e.g. another agent's")
     ap.add_argument("--accept-risk", action="store_true", help="install despite high-risk flags")
     ap.add_argument("--update", action="store_true", help="replace a copy skillscout installed earlier")
+    ap.add_argument("--commit", metavar="SHA", help="refuse unless upstream is still at this commit (the one `updates` showed)")
     rm = sub.add_parser("remove", help="uninstall a skill skillscout installed")
-    rm.add_argument("id")
+    rm.add_argument("id", help="its id or skill name, as `installed` lists it")
+    rm.add_argument("--force", action="store_true", help="delete it even if you edited it since install")
     rb = sub.add_parser("rollback", help="restore the copy the last `approve --update` replaced")
-    rb.add_argument("id")
+    rb.add_argument("id", help="its id or skill name, as `installed` lists it")
     sub.add_parser("installed", help="show pinned skills")
     sub.add_parser("updates", help="diff pinned skills against upstream; applies nothing")
     sub.add_parser("schedule", help="set up weekly discovery for this OS (you turn it on)")
     hi = sub.add_parser("history", help="summarise your recent Claude Code sessions, read locally, to draft personas from")
-    hi.add_argument("--days", type=int, default=60)
+    hi.add_argument("--days", type=int, default=60, help="how far back to read (default 60)")
     pe = sub.add_parser("persona", help="kinds of work, each with its own keywords and an agent kept current")
-    psub = pe.add_subparsers(dest="action", required=True)
+    psub = pe.add_subparsers(dest="action", required=True, metavar="action")
     pa = psub.add_parser("add", help="add a persona from one line about that work")
-    pa.add_argument("name")
+    pa.add_argument("name", help="lowercase letters, digits and dashes, e.g. brand")
     pa.add_argument("--about", required=True, help="what this side of your work is, in your words")
     pa.add_argument("--keywords", help="instead of drafting them: \"cold email=4,investor update=3\"")
-    pa.add_argument("--agent", help="agent file name, if not the persona's name")
+    pa.add_argument("--agent", metavar="NAME", help="agent file name, if not the persona's name")
     psub.add_parser("list", help="each persona, its keywords, and the installed skills that fit it")
     pb = psub.add_parser("build", help="write or update the persona's agent in ~/.claude/agents (only its skills: list)")
-    pb.add_argument("name", nargs="?")
-    pb.add_argument("--all", action="store_true")
-    pb.add_argument("--dry-run", action="store_true")
+    pb.add_argument("name", nargs="?", help="the persona to build")
+    pb.add_argument("--all", action="store_true", help="build every persona")
+    pb.add_argument("--dry-run", action="store_true", help="print the skills each agent would get; write nothing")
     pu = psub.add_parser("use", help="list only these personas' skills and plugins in Claude Code (no names: show what's active)")
-    pu.add_argument("names", nargs="*")
+    pu.add_argument("names", nargs="*", help="persona names")
     pu.add_argument("--clear", action="store_true", help="undo every change skillscout made: all skills and plugins as before")
     pu.add_argument("--core", action="store_true", help="no persona: hide every persona's skills and plugins, keep [switch] core")
     ps = psub.add_parser("start", help="`persona use` these personas, then start Claude Code")
-    ps.add_argument("names", nargs="+")
+    ps.add_argument("names", nargs="+", help="persona names")
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = parser()
     a = p.parse_args(argv)
+    if not a.cmd:
+        p.print_usage()
+        raise SystemExit(START)
 
     paths = core.Paths()
     if a.cmd == "init":
-        if USER_PROFILE.exists():
-            raise SystemExit(f"{USER_PROFILE} already exists")
-        text = EXAMPLE.read_text(encoding="utf-8")
-        if a.about:
-            kw = history.keywords_from(a.about, vocabulary(core.load_profile(EXAMPLE), paths))
-            if not kw:
-                raise SystemExit("none of those words appear in skill descriptions; try more specific ones")
-            head, rest = text.split("[keywords]\n", 1)
-            lines = rest.splitlines(keepends=True)
-            keep = next(i for i, line in enumerate(lines) if not line.startswith('"') and line.strip())
-            tail = "".join(lines[keep:])
-            text = head + "[keywords]\n" + f"# drafted from: {a.about}\n" + "".join(f"{json.dumps(k)} = {v}\n" for k, v in kw.items()) + "\n" + tail
-        USER_PROFILE.parent.mkdir(parents=True, exist_ok=True)
-        USER_PROFILE.write_text(text, encoding="utf-8")
-        print(f"wrote {USER_PROFILE}; " + ("check the drafted [keywords]" if a.about else "edit [keywords] to match your work")
-              + ", then run `skillscout discover`")
+        init(a.about, paths)
         return
-    profile = core.load_profile(a.profile or (USER_PROFILE if USER_PROFILE.exists() else EXAMPLE))
+    if a.profile:
+        profile = core.load_profile(a.profile)
+    elif USER_PROFILE.exists():
+        profile = core.load_profile(USER_PROFILE)
+    elif a.cmd in PERSONAL:
+        raise SystemExit(f"no profile yet, so nothing to score against; {START}")
+    else:
+        profile = core.load_profile(EXAMPLE)
     if folder := getattr(a, "to", None) or profile.get("install", {}).get("dir"):
         paths.skills = Path(folder).expanduser()
     cands = core._read(paths.candidates, [])
@@ -115,38 +129,51 @@ def main(argv: list[str] | None = None) -> None:
         data = index.build(records, a.out, core.RULES)
         print(f"wrote {a.out}: {len(data['skills'])} skills from {len({r['repo'] for r in records})} repos")
     elif a.cmd == "list":
-        rows = [c for c in cands if a.all or c["relevance"] > 0][: a.n]
-        for c in rows:
+        if not cands:
+            raise SystemExit("no candidates yet; run `skillscout discover`")
+        rows = core.dedupe([c for c in cands if a.all or c["relevance"] > 0])[: a.n]
+        print(f"{'score':5}  {'risk':6}  {'':9}  {'skill':52}  description")
+        for c, copies in rows:
             tag = "installed" if c["installed"] else ("REC" if core.recommended(c, profile) else "")
-            print(f"{c['score']:.2f}  {c['risk'] or '-':6}  {tag:9}  {c['id']}")
+            print(f"{c['score']:.2f}   {core.risk_word(c):6}  {tag:9}  {c['id'] + core.copies_note(copies):52}  {c['description'][:60]}")
     elif a.cmd == "show":
-        c = core.ensure_local(core.find(cands, a.id), paths)
-        print(json.dumps({k: c[k] for k in ("id", "score", "stars", "license", "commit", "risk", "matched", "conflicts")}, indent=2))
+        c = install.ensure_local(core.find(cands, a.id), paths)
+        print(f"{c['id']}  @{c['commit'][:10]}\n  score {c['score']:.2f}, {c['stars']} stars, licence {c['license'] or 'none'}, "
+              f"risk {core.risk_word(c)}\n  matched: {', '.join(c['matched']) or 'nothing in your keywords'}"
+              + (f"\n  overlaps: {'; '.join(c['conflicts'])}" if c["conflicts"] else ""))
         for f in c["flags"]:
             print(f"  [{f['level']}] {f['reason']} — {f['where']}")
         if "audits" in c:
             print(f"skills.sh audits (from the weekly index): {audits.summary(c['audits'])}")
-        src = core.source_dir(c, paths)
-        print(f"\nfiles: {', '.join(sorted(str(x.relative_to(src)) for x in src.rglob('*') if x.is_file()))}\n")
+        src = install.inside(Path(c["root"]), c["path"])
+        print(f"\nfiles: {', '.join(str(x.relative_to(src)) for x in skill_files(src))}\n")
         print((src / "SKILL.md").read_text(encoding="utf-8", errors="ignore"))
     elif a.cmd == "approve":
         c = core.find(cands, a.id)
-        print(f"installed {c['id']} -> {core.approve(c, paths, a.accept_risk, a.update, fetch=github)}")
-        if on := switch.active(paths):                 # a new skill for an inactive persona stays out of view
-            names = [n for n in on if n != switch.CORE]
+        expect = a.commit or (install.reviewed(paths).get(c["id"]) if a.update else None)
+        dest, status = install.approve(c, paths, a.accept_risk, a.update, fetch=github, expect=expect)
+        print(f"{c['id']} is already current at {dest}" if status == "current" else f"{status} {c['id']} -> {dest}")
+        if status != "current" and (on := switch.active(paths)):   # a new skill for an inactive persona stays out of view
+            names = [n for n in on if n in persona.personas(profile)]
             say_switch(switch.use(profile, paths, names, core.installed_skills(paths), not names), on, quiet=True)
     elif a.cmd == "remove":
-        print(f"removed {core.remove(a.id, paths)}")
+        cid, dest = install.remove(a.id, paths, a.force)
+        print(f"removed {cid} ({dest})")
     elif a.cmd == "rollback":
-        print(f"restored the previous {a.id} -> {core.rollback(a.id, paths)}")
+        cid, dest = install.rollback(a.id, paths)
+        print(f"restored the previous {cid} -> {dest}")
     elif a.cmd == "installed":
-        for cid, e in core._read(paths.lock, {}).items():
+        locked = core._read(paths.lock, {})
+        if not locked:
+            print("nothing pinned yet; install one with `skillscout approve <id>`")
+        for cid, e in locked.items():
             print(f"{cid}  @{e['commit'][:10]}  {e['installed_at']}")
     elif a.cmd == "updates":
-        found = core.updates(paths)
+        found = install.updates(paths)
         for cid, commit, diff in found:
             print(f"\n=== {cid} -> {commit[:10]}\n{diff}")
-        print(f"\n{len(found)} pinned skill(s) changed upstream." + (" Re-run `approve <id> --update` after reading the diff." if found else ""))
+        print(f"\n{len(found)} pinned skill(s) changed upstream."
+              + (" After reading a diff, `skillscout approve <id> --update` installs exactly that commit." if found else ""))
     elif a.cmd == "history":
         text = history.digest(history.episodes(days=a.days))
         print(text or "no Claude Code history found in ~/.claude/projects")
@@ -157,6 +184,30 @@ def main(argv: list[str] | None = None) -> None:
         files, message = schedule.here(paths.state)
         schedule.write(files)
         print(message)
+
+
+def init(about: str | None, paths: core.Paths) -> None:
+    if USER_PROFILE.exists():
+        raise SystemExit(f"{USER_PROFILE} already exists: edit its [keywords], add a side of your work with "
+                         "`skillscout persona add`, or move it away to start over")
+    text, note = EXAMPLE.read_text(encoding="utf-8"), "edit [keywords] to match your work"
+    if about:
+        try:
+            kw = history.keywords_from(about, vocabulary(core.load_profile(EXAMPLE), paths))
+            note = "check the drafted [keywords]"
+        except index.Unavailable as e:
+            print(f"{e}\nusing your own words as keywords; run `skillscout discover` later to refine them")
+            kw, note = history.plain_keywords(about), "check the [keywords] taken from your words"
+        if not kw:
+            raise SystemExit("none of those words appear in skill descriptions; try more specific ones")
+        head, rest = text.split("[keywords]\n", 1)
+        lines = rest.splitlines(keepends=True)
+        end = next((i for i, line in enumerate(lines) if line.strip() and not line.startswith('"')), len(lines))
+        drafted = " ".join(about.split())
+        text = (head + "[keywords]\n" + f"# drafted from: {drafted}\n"
+                + "".join(f"{toml_str(k)} = {v}\n" for k, v in kw.items()) + "\n" + "".join(lines[end:]))
+    write_toml(USER_PROFILE, text)
+    print(f"wrote {USER_PROFILE}; {note}, then run `skillscout discover`")
 
 
 def say_switch(done: dict, names: list[str], quiet: bool = False) -> None:
@@ -186,25 +237,28 @@ def start_claude(names: list[str], known: dict, paths: core.Paths) -> None:
 
 
 def vocabulary(profile: dict, paths: core.Paths) -> dict[str, int]:
-    """Terms skills use, from the cached index (downloaded first if there isn't one)."""
-    try:
-        if not paths.index.exists():
-            index.fetch(profile.get("index", {}).get("url") or index.URL, paths.index)
-        return history.vocabulary(index.load(paths.index)["skills"])
-    except index.Unavailable as e:
-        raise SystemExit(f"{e}\n(drafting keywords needs the skill index; or write them by hand)")
+    """Terms skills use, from the cached index (downloaded first if there isn't one). Raises index.Unavailable."""
+    if not paths.index.exists():
+        index.fetch(profile.get("index", {}).get("url") or index.URL, paths.index)
+    return history.vocabulary(index.load(paths.index)["skills"])
 
 
 def run_persona(a, profile: dict, paths: core.Paths, cands: list[dict]) -> None:
     known = persona.personas(profile)
     if a.action == "add":
-        if a.keywords:
-            kw = {k.strip(): int(v) for k, v in (pair.rsplit("=", 1) for pair in a.keywords.split(","))}
-        else:
-            kw = history.keywords_from(a.about, vocabulary(profile, paths))
         path = a.profile or USER_PROFILE
         if not path.exists():
-            raise SystemExit(f"no profile at {path}; run `skillscout init` first")
+            raise SystemExit(f"no profile at {path}; {START}")
+        if a.keywords:
+            try:
+                kw = {k.strip(): int(v) for k, v in (pair.rsplit("=", 1) for pair in a.keywords.split(","))}
+            except ValueError:
+                raise SystemExit('--keywords takes "phrase=weight" pairs, e.g. "cold email=4,investor update=3"')
+        else:
+            try:
+                kw = history.keywords_from(a.about, vocabulary(profile, paths))
+            except index.Unavailable as e:
+                raise SystemExit(f"{e}\n(drafting keywords needs the skill index; or pass --keywords)")
         print(persona.add(path, a.name, a.about, kw, a.agent, switch.draft_plugins(paths, kw)))
         print(f"\nadded to {path}. Next: `skillscout discover`, then `skillscout persona build {a.name}`")
         return
@@ -237,7 +291,9 @@ def run_persona(a, profile: dict, paths: core.Paths, cands: list[dict]) -> None:
             if pending:
                 print(f"  worth installing: {', '.join(c['id'] for c in pending)}")
         return
-    names = list(known) if a.all else [a.name] if a.name in known else None
+    if a.name and a.name not in known:
+        raise SystemExit(f"unknown persona {a.name!r}; you have: {', '.join(known)}")
+    names = list(known) if a.all else [a.name] if a.name else None
     if not names:
         raise SystemExit(f"name a persona ({', '.join(known)}) or pass --all")
     for name in names:

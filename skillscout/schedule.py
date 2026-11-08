@@ -27,7 +27,7 @@ def plan(platform: str, exe: Path, state: Path, home: Path, has_systemd: bool) -
   <key>StandardErrorPath</key><string>{log}</string>
 </dict></plist>
 """
-        return {plist: text}, f"wrote {plist}\nturn it on with:  launchctl load {plist}\nturn it off with: launchctl unload {plist}"
+        return {plist: text}, f"wrote {plist}\nturn it on with:  launchctl bootstrap gui/$(id -u) {plist}\nturn it off with: launchctl bootout gui/$(id -u) {plist}"
 
     if platform.startswith("linux") and has_systemd:
         unit = home / ".config" / "systemd" / "user"

@@ -1,21 +1,17 @@
 """Discovery, reporting, approval and update checks."""
 
-import difflib
-import hashlib
 import json
-import shutil
-import tomllib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-import os
-
 from . import audits, github, index, persona
+from .install import pick
 from .scan import HIGH, RULES, scan, worst
 from .score import combined, conflicts, freshness, popularity, relevance
-from .skill import find_skills, parse_frontmatter, safe_name
+from .skill import VENDORED, find_skills, licensed, parse_frontmatter, plugin_skills
+from .store import load_toml, read_json as _read, write_json as _write
 
 HOME = Path.home()
 STATE = HOME / ".skillscout"
@@ -40,26 +36,7 @@ class Paths:
 
 
 def load_profile(path: Path) -> dict:
-    return tomllib.loads(path.read_text(encoding="utf-8"))
-
-
-def _read(path: Path, default):
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else default
-
-
-def _write(path: Path, data) -> None:
-    """Write whole or not at all: a crash mid-write leaves the previous file, never half of one."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    tmp.replace(path)
-
-
-def digest(folder: Path) -> str:
-    h = hashlib.sha256()
-    for f in sorted(p for p in folder.rglob("*") if p.is_file() and not p.is_symlink()):
-        h.update(str(f.relative_to(folder)).encode() + b"\0" + f.read_bytes())
-    return h.hexdigest()
+    return load_toml(path)
 
 
 def installed_skills(paths: Paths) -> dict[str, str]:
@@ -71,21 +48,19 @@ def installed_skills(paths: Paths) -> dict[str, str]:
     except (OSError, ValueError):
         enabled = None                                    # no settings file: count every cached plugin
     out = {}
-    for root, is_plugin in ((paths.skills, False), (paths.plugins, True)):
-        if not root.exists():
-            continue
-        found = set(root.rglob("SKILL.md"))
-        if not is_plugin:      # rglob doesn't follow folder links (Python 3.13+); skills are often linked in
-            found |= {d / "SKILL.md" for d in root.iterdir() if (d.is_symlink() or getattr(d, "is_junction", bool)()) and (d / "SKILL.md").is_file()}
+    if paths.skills.exists():
+        found = set(paths.skills.rglob("SKILL.md"))
+        # rglob doesn't follow folder links (Python 3.13+); skills are often linked in
+        found |= {d / "SKILL.md" for d in paths.skills.iterdir()
+                  if (d.is_symlink() or getattr(d, "is_junction", bool)()) and (d / "SKILL.md").is_file()}
         for md in sorted(found):
-            if ".git" in md.parts or "node_modules" in md.parts:
-                continue
-            plugin = md.relative_to(root).parts[1] if is_plugin and len(md.relative_to(root).parts) > 2 else None
-            if is_plugin and (plugin is None or (enabled is not None and plugin not in enabled)):
+            if VENDORED & set(md.relative_to(paths.skills).parts):
                 continue
             meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
-            name = meta.get("name") or md.parent.name
-            out[f"{plugin}:{name}" if plugin else name] = meta.get("description", "")
+            out[meta.get("name") or md.parent.name] = meta.get("description", "")
+    for plugin, skills in plugin_skills(paths.plugins).items():
+        if enabled is None or plugin in enabled:
+            out |= {f"{plugin}:{name}": desc for name, desc in skills.items()}
     return out
 
 
@@ -217,7 +192,7 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
             tree_of = github.trees(root)
         except Exception:
             tree_of = {}
-        licensed = any((root / n).exists() for n in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"))
+        has_licence = licensed(root)
         names = set()
         for sk in find_skills(root):
             rel = sk.path.relative_to(root).as_posix()
@@ -225,7 +200,7 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
             cid = f"{r['full_name']}:{rel if sk.name in names else sk.name}"
             names.add(sk.name)
             tree = tree_of.get(rel)
-            key = f"{RULES}:{tree}:{int(licensed)}" if tree else None
+            key = f"{RULES}:{tree}:{int(has_licence)}" if tree else None
             old = previous.get(cid)
             if key and old and old.get("scan_key") == key and not full:     # same files, same rules: the old result stands
                 flags, reused = old["flags"], reused + 1
@@ -283,27 +258,26 @@ def discover_from_index(profile: dict, paths: Paths, url: str = index.URL, check
     return score(idx["skills"], profile, paths)
 
 
-def ensure_local(c: dict, paths: Paths, fetch=github) -> dict:
-    """Fetch the skill and scan it again here, so nothing about it is taken from the index on trust."""
-    root, commit = fetch.sync(c["repo"], paths.cache)
-    src = inside(root, c["path"])
-    if not (src / "SKILL.md").is_file() or (src / "SKILL.md").is_symlink():
-        raise SystemExit(f"{c['id']} is no longer at {c['path']} upstream; run `skillscout discover` again")
-    flags = [asdict(f) for f in scan(src, root)]
-    if commit != c["commit"]:
-        print(f"note: upstream moved from {c['commit'][:10]} to {commit[:10]} since the scan; showing the new commit")
-    # The install folder is named from the SKILL.md fetched here, not from the index
-    name = parse_frontmatter((src / "SKILL.md").read_text(encoding="utf-8", errors="ignore")).get("name") or src.name
-    name = name if safe_name(name) else src.name
-    return {**c, "name": name, "commit": commit, "flags": flags, "risk": worst(flags)}
+def risk_word(c: dict) -> str:
+    return c["risk"] or "none"
 
 
-def inside(root: Path, rel: str) -> Path:
-    """root/rel, refusing any rel that leads out of root (`../`, an absolute path, a symlinked folder)."""
-    path = (root / rel).resolve()
-    if path != root.resolve() and root.resolve() not in path.parents:
-        raise SystemExit(f"refusing {rel!r}: it points outside the repository")
-    return root / rel
+def dedupe(candidates: list[dict]) -> list[tuple[dict, int]]:
+    """One row per skill, in order: a skill at two paths in one repo, or copied into forks, shows once (its
+    best-scored copy) with the number of other copies."""
+    first, out = {}, []
+    for c in candidates:
+        key = (c["name"].lower(), " ".join(c["description"].lower().split()))
+        if key in first:
+            out[first[key]][1] += 1
+        else:
+            first[key] = len(out)
+            out.append([c, 0])
+    return [(c, n) for c, n in out]
+
+
+def copies_note(n: int) -> str:
+    return f" (+{n} {'copy' if n == 1 else 'copies'})" if n else ""
 
 
 def recommended(c: dict, profile: dict) -> bool:
@@ -313,7 +287,9 @@ def recommended(c: dict, profile: dict) -> bool:
 
 
 def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -> tuple[Path, str]:
-    rec = [c for c in candidates if recommended(c, profile)]
+    rows = dedupe([c for c in candidates if recommended(c, profile)])     # copies of one skill count once
+    rec, copies = [c for c, _ in rows], {c["id"]: n for c, n in rows}
+    more = lambda c: copies_note(copies.get(c["id"], 0))
     flagged = [c for c in candidates if c["risk"] == HIGH and c["relevance"] > 0]
     new = [c for c in candidates if c["new"]]
     fresh = [c for c in rec if c["new"]]
@@ -324,19 +300,19 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
     if first:
         lines.append("First run: everything is new. From the next run, this section lists only what appeared since.")
     elif fresh:
-        lines += [f"- **`{c['id']}`** ({c['stars']}★, score {c['score']:.2f}): {c['description'][:140]}" for c in fresh[:top]]
+        lines += [f"- **`{c['id']}`**{more(c)} ({c['stars']}★, score {c['score']:.2f}): {c['description'][:140]}" for c in fresh[:top]]
     else:
         lines.append("Nothing new that fits your profile.")
     lines += ["", "Run `skillscout updates` to see what changed in the skills you already have.", "",
               "## Recommended", "", "| Score | Skill | Stars | Risk | skills.sh audits | Matched | Why |", "|---|---|---|---|---|---|---|"]
     for c in rec[:top]:
-        lines.append(f"| {c['score']:.2f} | `{c['id']}`{' 🆕' if c['new'] else ''} | {c['stars']} | {c['risk'] or 'none'} "
+        lines.append(f"| {c['score']:.2f} | `{c['id']}`{' 🆕' if c['new'] else ''}{more(c)} | {c['stars']} | {risk_word(c)} "
                      f"| {audits.summary(c.get('audits'))} | {', '.join(c['matched'][:4])} | {c['description'][:110]} |")
     for name in persona.personas(profile):
         mine = sorted((c for c in rec if c["personas"].get(name, 0) >= profile["scoring"].get("min_relevance", 0.3)),
                       key=lambda c: (-c["new"], -c["personas"][name], -c["score"]))[:8]
         lines += ["", f"## For your {name} work", ""]
-        lines += [f"- `{c['id']}`{' 🆕' if c['new'] else ''} ({c['stars']}★): {c['description'][:120]}" for c in mine] \
+        lines += [f"- `{c['id']}`{' 🆕' if c['new'] else ''}{more(c)} ({c['stars']}★): {c['description'][:120]}" for c in mine] \
             or ["Nothing recommended yet; widen its keywords in your profile."]
     lines += ["", "Install one with `skillscout approve <id>` after reading it with `skillscout show <id>`.", "",
               "## Relevant but blocked", ""]
@@ -353,123 +329,5 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
 
 
 def find(candidates: list[dict], cid: str) -> dict:
-    match = [c for c in candidates if c["id"] == cid] or [c for c in candidates if c["id"].endswith(":" + cid)]
-    if len(match) != 1:
-        raise SystemExit(f"{'no' if not match else 'ambiguous'} candidate matches {cid!r}; run `skillscout list`")
-    return match[0]
-
-
-def source_dir(c: dict, paths: Paths) -> Path:
-    return inside(paths.cache / c["repo"].replace("/", "__"), c["path"])
-
-
-def approve(c: dict, paths: Paths, accept_risk: bool = False, replace: bool = False, fetch=None) -> Path:
-    """Copy one skill into ~/.claude/skills and pin it in the lockfile. With `fetch`, the skill is fetched and
-    re-scanned here first, and that scan decides."""
-    if fetch is not None:
-        c = ensure_local(c, paths, fetch)
-    if c["risk"] == HIGH and not accept_risk:
-        raise SystemExit(f"{c['id']} has high-risk flags; read it with `show`, then pass --accept-risk")
-    if audits.blocked(c.get("audits")) and not accept_risk:
-        raise SystemExit(f"{c['id']}: skills.sh auditors rate it high risk ({audits.summary(c['audits'])}); "
-                         "read it with `show`, then pass --accept-risk")
-    if not safe_name(c["name"]):
-        raise SystemExit(f"refusing to install {c['id']}: {c['name']!r} isn't a plain folder name")
-    repo_dir = paths.cache / c["repo"].replace("/", "__")
-    src, dest = inside(repo_dir, c["path"]), paths.skills / c["name"]
-    locked = _read(paths.lock, {})
-    if dest.exists():
-        ours = locked.get(c["id"], {}).get("digest") == digest(dest)
-        if not (replace and ours):
-            raise SystemExit(f"{dest} already exists" + ("" if ours else " and wasn't installed by skillscout"))
-    # Pin what is actually in the cache now (an `update` check may have moved it past discovery time)
-    commit = github.git("rev-parse", "HEAD", cwd=repo_dir)
-    # Build the new copy beside the old one, then swap: a failure at any step leaves the old copy in place
-    stage = paths.skills / f".{c['name']}.skillscout-new"
-    shutil.rmtree(stage, ignore_errors=True)
-    paths.skills.mkdir(parents=True, exist_ok=True)
-    # Symlinks are dropped: following one could copy files from outside the skill (e.g. ~/.ssh)
-    shutil.copytree(src, stage, ignore=lambda d, names: [n for n in names if n == ".git" or Path(d, n).is_symlink()])
-    entry = {"repo": c["repo"], "repo_id": c.get("repo_id"), "path": c["path"], "commit": commit, "digest": digest(stage),
-             "dest": str(dest), "installed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    backup = None
-    if dest.exists():
-        backup = paths.backups / _slug(c["id"])
-        shutil.rmtree(backup, ignore_errors=True)
-        backup.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(dest), str(backup))
-        entry["previous"] = {k: v for k, v in locked[c["id"]].items() if k != "previous"} | {"backup": str(backup)}
-    swapped = False
-    try:
-        stage.rename(dest)
-        swapped = True
-        _write(paths.lock, {**locked, c["id"]: entry})
-    except BaseException:
-        if swapped:
-            shutil.rmtree(dest)
-        if backup:
-            shutil.move(str(backup), str(dest))
-        shutil.rmtree(stage, ignore_errors=True)
-        raise
-    return dest
-
-
-def _slug(cid: str) -> str:
-    return "".join(ch if ch.isalnum() or ch in "-._" else "_" for ch in cid)
-
-
-def rollback(cid: str, paths: Paths) -> Path:
-    """Put back the copy the last `approve --update` replaced, and its pin."""
-    locked = _read(paths.lock, {})
-    prev = locked.get(cid, {}).get("previous")
-    if not prev or not Path(prev["backup"]).exists():
-        raise SystemExit(f"no earlier version of {cid} to roll back to")
-    dest, backup = Path(locked[cid]["dest"]), Path(prev.pop("backup"))
-    if dest.exists() and digest(dest) != locked[cid]["digest"]:
-        raise SystemExit(f"{dest} was edited since install; move your changes out first")
-    stage = dest.with_name(f".{dest.name}.skillscout-old")
-    shutil.rmtree(stage, ignore_errors=True)
-    if dest.exists():
-        dest.rename(stage)
-    try:
-        shutil.move(str(backup), str(dest))
-        _write(paths.lock, {**locked, cid: prev})
-    except BaseException:
-        if dest.exists() and stage.exists():
-            shutil.move(str(dest), str(backup))
-        if stage.exists():
-            stage.rename(dest)
-        raise
-    shutil.rmtree(stage, ignore_errors=True)
-    return dest
-
-
-def remove(cid: str, paths: Paths) -> Path:
-    locked = _read(paths.lock, {})
-    if cid not in locked:
-        raise SystemExit(f"{cid} isn't in the lockfile")
-    dest = Path(locked.pop(cid)["dest"])
-    _write(paths.lock, locked)
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.rmtree(paths.backups / _slug(cid), ignore_errors=True)
-    return dest
-
-
-def updates(paths: Paths, fetch=github) -> list[tuple[str, str, str]]:
-    """(id, new commit, unified diff) for each pinned skill whose source changed. Applies nothing."""
-    out = []
-    for cid, entry in _read(paths.lock, {}).items():
-        root, commit = fetch.sync(entry["repo"], paths.cache)
-        if commit == entry["commit"]:
-            continue
-        new, old = root / entry["path"], Path(entry["dest"])
-        diff = []
-        names = sorted({str(p.relative_to(d)) for d in (old, new) if d.exists() for p in d.rglob("*") if p.is_file()})
-        for n in names:
-            a = (old / n).read_text(encoding="utf-8", errors="ignore").splitlines() if (old / n).exists() else []
-            b = (new / n).read_text(encoding="utf-8", errors="ignore").splitlines() if (new / n).exists() else []
-            diff += difflib.unified_diff(a, b, f"installed/{n}", f"upstream/{n}", lineterm="")
-        if diff:
-            out.append((cid, commit, "\n".join(diff)))
-    return out
+    by_id = {c["id"]: c for c in candidates}
+    return by_id[pick(by_id, cid)]

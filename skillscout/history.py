@@ -151,3 +151,10 @@ def keywords_from(about: str, vocab: dict[str, int], k: int = 10) -> dict[str, i
             break
     hi = max(out.values(), default=1)
     return {surface[t]: max(1, round(4 * w / hi)) for t, w in out.items()}
+
+
+def plain_keywords(about: str, k: int = 10) -> dict[str, int]:
+    """Keywords straight from a sentence, split at commas and joining words: for when the index, and with it
+    the vocabulary skills use, can't be downloaded. `discover` and `init` can refine them later."""
+    phrases = (" ".join(p.split()) for p in re.split(r"[,;/]|\b(?:and|in|with|for|of)\b", about.lower()))
+    return {p: 2 for p in list(dict.fromkeys(p for p in phrases if len(p) > 1))[:k]}

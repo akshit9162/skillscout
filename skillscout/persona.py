@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .score import relevance
 from .skill import parse_frontmatter
+from .store import toml_str, write_toml
 
 NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 
@@ -38,13 +39,13 @@ def add(profile_path: Path, name: str, description: str, keywords: dict[str, int
         raise SystemExit(f"{name} is already in {profile_path}; edit it there")
     if not keywords:
         raise SystemExit("no keywords: describe the work in more specific words, or pass --keywords")
-    block = [f"\n[personas.{name}]", f"description = {json.dumps(description)}"]
+    block = [f"\n[personas.{name}]", f"description = {toml_str(description)}"]
     if agent and agent != name:
-        block.append(f"agent = {json.dumps(agent)}")
+        block.append(f"agent = {toml_str(agent)}")
     block += ["max_skills = 5", "skills = []    # always part of this persona", "exclude = []   # never part of it",
-              f"plugins = {json.dumps(plugins or [])}   # switched on with this persona, off when only others are active",
-              f"[personas.{name}.keywords]"] + [f"{json.dumps(k)} = {v}" for k, v in keywords.items()]
-    profile_path.write_text(text.rstrip("\n") + "\n" + "\n".join(block) + "\n", encoding="utf-8")
+              f"plugins = [{', '.join(map(toml_str, plugins or []))}]   # switched on with this persona, off when only others are active",
+              f"[personas.{name}.keywords]"] + [f"{toml_str(k)} = {v}" for k, v in keywords.items()]
+    write_toml(profile_path, text.rstrip("\n") + "\n" + "\n".join(block) + "\n")
     return "\n".join(block).strip()
 
 
@@ -74,7 +75,7 @@ def write_agent(path: Path, name: str, description: str, skills: list[str]) -> t
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"""---
 name: {name}
-description: {json.dumps(description or f"The {name} side of my work")}
+description: {json.dumps(description or f"The {name} side of my work", ensure_ascii=False)}
 {_skills_block(skills)}---
 
 {description}

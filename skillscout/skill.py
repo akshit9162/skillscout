@@ -6,6 +6,19 @@ from pathlib import Path
 
 # A name becomes a folder under the skills directory, so it can't carry a path: no slashes, no leading dot
 SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._ -]{0,99}")
+VENDORED = {".git", "node_modules", "dist", "build"}        # never part of a skill
+LICENCE_FILES = ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING")
+
+
+def skill_files(folder: Path) -> list[Path]:
+    """A skill's own files, sorted: no symlinks (one could lead to ~/.ssh) and nothing under .git.
+    Every reader of a skill's files goes through here: scan, digest, show, updates."""
+    return sorted(p for p in folder.rglob("*") if ".git" not in p.relative_to(folder).parts
+                  and not p.is_symlink() and p.is_file())
+
+
+def licensed(root: Path) -> bool:
+    return any((root / n).exists() for n in LICENCE_FILES)
 
 
 def safe_name(name: str) -> bool:
@@ -51,7 +64,7 @@ def find_skills(root: Path) -> list[Skill]:
     (`../x`, `a/b`) falls back to the folder's own name. Duplicate names are kept; the caller tells them apart."""
     skills = []
     for md in sorted(root.rglob("SKILL.md")):
-        if any(part in {".git", "node_modules", "dist", "build"} for part in md.parts) or md.is_symlink() or not md.is_file():
+        if VENDORED & set(md.relative_to(root).parts) or md.is_symlink() or not md.is_file():
             continue
         meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
         name = meta.get("name") or md.parent.name
@@ -59,6 +72,21 @@ def find_skills(root: Path) -> list[Skill]:
             name = md.parent.name
             if not safe_name(name):
                 continue
-        files = sorted(str(p.relative_to(md.parent)) for p in md.parent.rglob("*") if p.is_file() and not p.is_symlink())
+        files = [str(p.relative_to(md.parent)) for p in skill_files(md.parent)]
         skills.append(Skill(name, meta.get("description", ""), md.parent, files))
     return skills
+
+
+def plugin_skills(cache: Path) -> dict[str, dict[str, str]]:
+    """plugin name -> {skill: description} for every plugin in Claude Code's plugin cache, enabled or not.
+    The cache is laid out <marketplace>/<plugin>/<version>/..."""
+    out: dict[str, dict[str, str]] = {}
+    if not cache.exists():
+        return out
+    for md in sorted(cache.rglob("SKILL.md")):
+        rel = md.relative_to(cache).parts
+        if len(rel) < 3 or VENDORED & set(rel):
+            continue
+        meta = parse_frontmatter(md.read_text(encoding="utf-8", errors="ignore"))
+        out.setdefault(rel[1], {})[meta.get("name") or md.parent.name] = meta.get("description", "")
+    return out
