@@ -1,0 +1,32 @@
+name: Bug
+description: A command did the wrong thing or crashed
+labels: [bug]
+body:
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: What you ran
+      placeholder: skillscout discover
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What happened
+      description: The output, pasted as text. Remove anything private from paths or keywords.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: input
+    id: version
+    attributes:
+      label: Version and OS
+      description: "`skillscout --version`, plus macOS / Linux / Windows and the Python version"
+      placeholder: skillscout 0.5.0, macOS 15, Python 3.13
+    validations:
+      required: true

@@ -1,0 +1,16 @@
+name: Missing repo or skill
+description: A public skill repo that isn't in the weekly index
+labels: [index]
+body:
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      placeholder: owner/repo
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Anything to know
+      description: Where its SKILL.md files live, if not obvious. The index skips repos with no push in a year and archived repos.
