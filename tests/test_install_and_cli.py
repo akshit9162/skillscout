@@ -2,6 +2,7 @@
 
 import gzip
 import json
+import os
 import subprocess
 import tomllib
 import urllib.error
@@ -100,7 +101,8 @@ def test_writing_through_a_symlinked_settings_file_keeps_the_link(tmp_path):
     link.symlink_to(real)
     store.write_json(link, {"b": 1, "a": 2}, sort_keys=False)
     assert link.is_symlink() and json.loads(real.read_text(encoding="utf-8")) == {"b": 1, "a": 2}
-    assert real.stat().st_mode & 0o777 == 0o600
+    if os.name != "nt":                                     # Windows has no Unix permission bits
+        assert real.stat().st_mode & 0o777 == 0o600
 
 
 def test_persona_and_init_text_with_emoji_and_newlines_stay_valid_toml(tmp_path, monkeypatch):
