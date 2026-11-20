@@ -686,3 +686,21 @@ def test_audit_fetch_never_raises(monkeypatch):
         raise OSError("offline")
     monkeypatch.setattr(audits.urllib.request, "urlopen", down)
     assert audits.fetch("me/good", ["x"]) == {} and audits.fetch("not-a-repo", ["x"]) == {}
+
+
+def test_relevance_skips_what_a_skill_says_it_does_not_do():
+    kw = {"kubernetes": 3.0, "helm": 2.0}
+    assert relevance("This skill does not deploy to Kubernetes.", kw) == (0.0, [])
+    assert relevance("Writes Dockerfiles; it can't touch Kubernetes or Helm.", kw)[1] == []
+    # Only the clause after the cue is out: what the skill does still counts.
+    score, hits = relevance("Deploys to Kubernetes, but does not handle Helm.", kw)
+    assert hits == ["kubernetes"] and score == 0.6
+    assert relevance("Never edits Helm charts. Deploys to Kubernetes.", kw)[1] == ["kubernetes"]
+    assert relevance("Deploys to Kubernetes with Helm.", kw)[1] == ["kubernetes", "helm"]
+    # A bare cue negates the list after it, up to the end of the sentence.
+    assert relevance("Writes Dockerfiles. Not for: Kubernetes, Helm.", kw)[1] == []
+    assert relevance("Don't use for: Helm. Deploys to Kubernetes.", kw)[1] == ["kubernetes"]
+    # A short negated clause is not a bare cue: what follows it still counts.
+    assert relevance("Does not deploy Kubernetes, but writes Helm charts.", kw)[1] == ["helm"]
+    assert relevance("Not to be used for: Helm.", kw)[1] == []
+

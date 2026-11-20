@@ -34,10 +34,36 @@ def _phrase(keyword: str) -> str:
     return _words(keyword)
 
 
+# A word after one of these, in the same clause, is something the skill says it does not do.
+NEGATION = re.compile(r"\b(?:not|cannot|can't|can’t|doesn't|doesn’t|don't|don’t|won't|won’t|isn't|isn’t|never|no longer)\b")
+CLAUSE = re.compile(r"[,;:()]|\bbut\b")
+SENTENCE = re.compile(r"[.!?\n]")
+# A cue with nothing after it ("Not for:", "Don't use for:") negates the list that follows.
+BARE = re.compile(r"^\W*(?:(?:to\W+)?(?:be\W+)?(?:use|used)\W+)?(?:for|on|with)?\W*$")
+
+
+def _affirmed(text: str) -> str:
+    """The text without what it says it does not do: each clause is cut at its first negation cue,
+    so "Deploys to Kubernetes, but does not handle Helm" keeps Kubernetes and drops Helm. A bare cue
+    ("Not for: A, B") drops the rest of its sentence."""
+    kept = []
+    for sentence in SENTENCE.split(text.lower()):
+        for clause in CLAUSE.split(sentence):
+            cue = NEGATION.search(clause)
+            if not cue:
+                kept.append(clause)
+                continue
+            kept.append(clause[:cue.start()])
+            if BARE.match(clause[cue.end():]):
+                break
+    return " ".join(kept)
+
+
 def relevance(text: str, keywords: dict[str, float]) -> tuple[float, list[str]]:
     """Share of the best achievable keyword weight this text hits, capped so 3 strong matches reach 1.
-    A keyword phrase matches when its words appear in order, in any word form."""
-    low = f" {_words(text)} "
+    A keyword phrase matches when its words appear in order, in any word form, outside what the text
+    says it does not do."""
+    low = f" {_words(_affirmed(text))} "
     hits = [k for k in keywords if f" {_phrase(k)} " in low]
     top = sorted(keywords.values(), reverse=True)[:3]
     return min(sum(keywords[k] for k in hits) / max(sum(top), 1e-9), 1.0), hits
