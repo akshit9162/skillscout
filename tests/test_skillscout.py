@@ -705,15 +705,6 @@ def test_relevance_skips_what_a_skill_says_it_does_not_do():
     assert relevance("Not to be used for: Helm.", kw)[1] == []
 
 
-def test_combined_moves_star_weight_to_measured_effectiveness():
-    from skillscout.score import combined
-    # No benchmark yet: the formula is unchanged.
-    assert combined(1.0, 1.0, 1.0, False) == 1.0 and combined(0.0, 1.0, 0.0, False) == 0.2
-    # With a benchmark result, stars keep a sliver and the measured effect takes the rest.
-    assert combined(0.0, 1.0, 0.0, False, effectiveness=0.0) == 0.05
-    assert combined(0.0, 0.0, 0.0, False, effectiveness=1.0) == 0.15
-
-
 def test_feedback_pulls_toward_kept_skills_and_away_from_rejected_ones():
     from skillscout.score import feedback, tokens
     kept = [tokens("Write pytest tests for Python services")]
@@ -748,3 +739,48 @@ def test_rejected_skill_is_not_recommended_and_similar_ones_drop(env):
     again = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
     assert core.recommended(again["gst-eval"], PROFILE) and again["gst-eval"]["score"] == before["gst-eval"]["score"]
     assert all(0 <= c["score"] <= 1 for c in again.values())
+
+
+def test_relevance_scales_down_padded_descriptions():
+    kw = {"eval": 3}
+    short = relevance("Build an eval set.", kw)[0]
+    padded = relevance("Build an eval set. " + "Also use when the user mentions dashboards, charts, plots, tables. " * 8, kw)[0]
+    assert short == 1.0 and 0.5 < padded < 0.7   # 84 words against a 43-word average
+    assert relevance("eval " + "word " * 20, kw)[0] == 1.0   # shorter than average is never boosted past 1
+
+
+def test_ranking_eval_on_the_judged_pool():
+    from skillscout import evaluate
+    r = evaluate.evaluate()
+    assert r["ndcg"] >= 0.73 and r["precision"] >= 0.8   # 2026-11-20 baseline after length normalisation
+
+
+def test_puffery_does_not_match():
+    assert relevance("The best, most powerful deploy tool", {"best": 3, "deploy": 1})[1] == ["deploy"]
+    from skillscout.score import PUSHY
+    assert PUSHY.search("You must use this skill for any Python.") and not PUSHY.search("Use for Python tests.")
+
+
+def test_momentum_lets_a_fast_new_repo_match_an_old_big_one():
+    from datetime import datetime, timezone
+    from skillscout.score import momentum, popularity
+    now = datetime(2026, 11, 20, tzinfo=timezone.utc)
+    new = momentum(40, "2026-11-15T00:00:00Z", None, now)          # 40 stars in 5 days
+    old = momentum(5000, "2024-11-20T00:00:00Z", None, now)        # 5,000 stars over two years
+    assert popularity(5000) > popularity(40) * 1.8                 # what total stars said
+    assert new > old * 0.9                                         # what momentum says
+    seen = momentum(5000, "2024-11-20T00:00:00Z", [["2026-11-13", 4990]], now)
+    assert seen < old * 0.7                                        # +10 in a week, measured: far below its lifetime pace
+    assert momentum(300, None, None, now) == popularity(300)       # no dates at all: unchanged
+
+
+def test_a_repo_first_seen_this_week_gets_a_boost_but_not_on_the_first_run(env, tmp_path):
+    paths, gh = env
+    first = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert not any(c["new_repo"] for c in first.values())
+    fresh = tmp_path / "src" / "fresh"
+    make_repo(fresh, {"LICENSE": "MIT", "skills/rl-gym/SKILL.md": skill_md("rl-gym", "An RL environment eval in Python")})
+    gh.repos["me/fresh"] = (fresh, 500)
+    link(paths.cache / "me__fresh", fresh)
+    second = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert second["rl-gym"]["new_repo"] and not second["gst-eval"]["new_repo"]

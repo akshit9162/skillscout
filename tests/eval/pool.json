@@ -1,0 +1,586 @@
+{
+ "about": "A frozen pool of 71 real skills from the 2026-11-20 index (high-risk ones left out), each graded by hand for one profile: 2 = a clear pick, 1 = useful, 0 = wrong fit. The grades are an LLM's judgment (Claude, reading each description), checked by no one else yet; fix any you disagree with. Scores are computed as of `now`, so freshness does not drift.",
+ "now": "2026-11-20T00:00:00Z",
+ "profile": {
+  "rl environment": 4,
+  "reinforcement learning": 3,
+  "eval": 3,
+  "benchmark": 3,
+  "reward": 2,
+  "agent": 2,
+  "python": 2,
+  "pytest": 2,
+  "fastapi": 1,
+  "llm": 2
+ },
+ "skills": [
+  {
+   "id": "github/awesome-copilot:eval-driven-dev",
+   "name": "eval-driven-dev",
+   "description": "Improve AI application with evaluation-driven development. Define eval criteria, instrument the application, build golden datasets, observe and evaluate application runs, analyze results, and produce a concrete action plan for improvements. ALWAYS USE THIS SKILL when the user asks to set up QA, add tests, add evals, evaluate, benchmark, fix wrong behaviors, improve quality, or do quality assurance for any Python project that calls an LLM model.",
+   "stars": 41211,
+   "pushed_at": "2026-11-16T02:39:23Z",
+   "grade": 2
+  },
+  {
+   "id": "lawve-ai/awesome-legal-skills:legal-ai-model-router-stephane-boghossian",
+   "name": "legal-ai-model-router-stephane-boghossian",
+   "description": "Routes any legal task to the right LLM, like OpenRouter but for legal work and grounded in benchmarks instead of brand loyalty. Built from mid-2026 legal evals (legalbenchmarks.ai, Vals AI × Stanford LegalBench across 124 models, Harvey's Legal Agent Benchmark, the Atticus Project's CUAD/MAUD/ACORD) plus translation evidence (WMT25, SwiLTra-Bench, ArabLegalEval). Covers five verticals: contract drafting, info extraction, legal research, contract review, and legal translation (including Arabic/MENA). Each asks up to four questions (cost, speed, accuracy/stakes, privacy/jurisdiction/language), then returns a primary model, a fallback, what to avoid, and what a human must verify. Core principle: capability is not controllability, so every route ends with a verification step. Not legal advice; a lawyer owns the output.",
+   "stars": 957,
+   "pushed_at": "2026-10-19T16:51:56Z",
+   "grade": 0
+  },
+  {
+   "id": "huggingface/skills:trl-training",
+   "name": "trl-training",
+   "description": "Post-train LLMs with TRL (Transformers Reinforcement Learning) — SFT, DPO, GRPO, KTO, and reward-model training. Use when writing or debugging training code with the TRL Python API or the trl CLI.",
+   "stars": 11355,
+   "pushed_at": "2026-11-13T15:20:05Z",
+   "grade": 2
+  },
+  {
+   "id": "foryourhealth111-pixel/Vibe-Skills:pufferlib",
+   "name": "pufferlib",
+   "description": "This skill should be used when working with reinforcement learning tasks including high-performance RL training, custom environment development, vectorized parallel simulation, multi-agent systems, or integration with existing RL environments (Gymnasium, PettingZoo, Atari, Procgen, etc.). Use this skill for implementing PPO training, creating PufferEnv environments, optimizing RL performance, or developing policies with CNNs/LSTMs.",
+   "stars": 3821,
+   "pushed_at": "2026-11-09T07:33:42Z",
+   "grade": 2
+  },
+  {
+   "id": "a5c-ai/babysitter:eval-harness",
+   "name": "eval-harness",
+   "description": "Evaluation harness for testing agent and skill quality through structured benchmarks, regression tests, and quality scoring.",
+   "stars": 1914,
+   "pushed_at": "2026-11-01T17:01:59Z",
+   "grade": 2
+  },
+  {
+   "id": "fcakyon/claude-codex-settings:testing-livekit-agents",
+   "name": "testing-livekit-agents",
+   "description": "Writes turn-level tests for a LiveKit agent in the user''s normal test suite: pytest (Python) or Vitest (Node.js). Use when the user asks to \"write tests for my agent\", \"add a test for this tool\", \"test the handoff\", \"pin this bug\", \"why does my agent test fail\", or after building or changing agent behavior that needs regression coverage. Covers the SDK''s test session harness, assertions on messages, tool calls and handoffs, LLM judging of a reply against an intent, mocking tools, multi-turn tests, and judging whole conversations with the built-in judges. For interactive poking use debugging-livekit-agents. For grading whole conversations at scale use running-livekit-simulations.",
+   "stars": 1212,
+   "pushed_at": "2026-11-15T12:12:03Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:senior-prompt-engineer",
+   "name": "senior-prompt-engineer",
+   "description": "Improve prompts and measure LLM quality: fix inconsistent prompts, build eval sets, score RAG retrieval, check agent tool configs. Use whenever the user's prompt, chatbot or RAG answers are unreliable or they ask how to test them.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 1
+  },
+  {
+   "id": "elie222/inbox-zero:test-feature",
+   "name": "test-feature",
+   "description": "End-to-end feature testing — browser QA, API verification, eval tests, or any combination. Covers browser interactions (via agent-browser CLI), Google Workspace operations (gws CLI), API calls, and LLM eval tests. Can also persist checks as reusable automated tests.",
+   "stars": 13038,
+   "pushed_at": "2026-11-16T10:46:26Z",
+   "grade": 0
+  },
+  {
+   "id": "github/awesome-copilot:agentic-eval",
+   "name": "agentic-eval",
+   "description": "Patterns and techniques for evaluating and improving AI agent outputs. Use this skill when: - Implementing self-critique and reflection loops - Building evaluator-optimizer pipelines for quality-critical generation - Creating test-driven code refinement workflows - Designing rubric-based or LLM-as-judge evaluation systems - Adding iterative improvement to agent outputs (code, reports, analysis) - Measuring and improving agent response quality",
+   "stars": 41211,
+   "pushed_at": "2026-11-16T02:39:23Z",
+   "grade": 2
+  },
+  {
+   "id": "github/awesome-copilot:phoenix-cli",
+   "name": "phoenix-cli",
+   "description": "Debug LLM applications using the Phoenix CLI. Fetch traces, analyze errors, structure trace review with open coding and axial coding, inspect datasets, review experiments, query annotation configs, and use the GraphQL API. Use whenever the user is analyzing traces or spans, investigating LLM/agent failures, deciding what to do after instrumenting an app, building failure taxonomies, choosing what evals to write, or asking \"what's going wrong\", \"what kinds of mistakes\", or \"where do I focus\" — even without naming a technique.",
+   "stars": 41211,
+   "pushed_at": "2026-11-16T02:39:23Z",
+   "grade": 1
+  },
+  {
+   "id": "google/skills:agent-platform-eval-flywheel",
+   "name": "agent-platform-eval-flywheel",
+   "description": "Measures and improves the quality of AI models and agents on Google Cloud using the Eval Quality Flywheel methodology. Use when generating synthetic user scenarios, evaluating an agent or model, building an eval dataset, picking or writing evaluation metrics, analyzing failures, comparing results before and after a fix, or when guidance is needed on Agent Platform eval methodology — including dataset schema, LLM-as-judge scoring, and common failure causes. For fine-tuning, use agent-platform-tuning. For general production deployment, use agent-platform-deploy.",
+   "stars": 24352,
+   "pushed_at": "2026-11-16T01:46:01Z",
+   "grade": 1
+  },
+  {
+   "id": "Orchestra-Research/AI-Research-SKILLs:fine-tuning-with-trl",
+   "name": "fine-tuning-with-trl",
+   "description": "Fine-tune LLMs using reinforcement learning with TRL - SFT for instruction tuning, DPO for preference alignment, PPO/GRPO for reward optimization, and reward model training. Use when need RLHF, align model with preferences, or train from human feedback. Works with HuggingFace Transformers.",
+   "stars": 14585,
+   "pushed_at": "2026-10-11T02:56:34Z",
+   "grade": 2
+  },
+  {
+   "id": "Orchestra-Research/AI-Research-SKILLs:evolving-ai-agents",
+   "name": "evolving-ai-agents",
+   "description": "Provides guidance for automatically evolving and optimizing AI agents across any domain using LLM-driven evolution algorithms. Use when building self-improving agents, optimizing agent prompts and skills against benchmarks, or implementing automated agent evaluation loops.",
+   "stars": 14585,
+   "pushed_at": "2026-10-11T02:56:34Z",
+   "grade": 1
+  },
+  {
+   "id": "KalarisLabs/research-agent-skills:arbor",
+   "name": "arbor",
+   "description": "Autonomously improve a real artifact (code, training recipe, agent harness, data pipeline, prompt) against an objective and an evaluator, using Hypothesis Tree Refinement (HTR) from the Arbor paper. Use this whenever someone wants to iteratively optimize something over many experiments without overfitting — e.g. \"get my model's eval score up\", \"improve this agent/harness\", \"tune this pipeline\", \"beat the baseline on this benchmark\", \"run a search over approaches and keep the best\", \"do an MLE-bench / Kaggle-style optimization\", or any long-horizon \"make this artifact better and don't just memorize the dev set\" task. Trigger it even when the user doesn't say \"Arbor\" or \"hypothesis tree\" but describes repeated experiment-and-evaluate loops, branching exploration of competing ideas, or worries about a dev/test gap. Runs Claude itself as the coordinator with subagent executors in isolated git worktrees; for the standalone `arbor` CLI tool see references/arbor-upstream.md.",
+   "stars": 149,
+   "pushed_at": "2026-11-14T09:49:08Z",
+   "grade": 1
+  },
+  {
+   "id": "a5c-ai/babysitter:reinforcement-learning-agents",
+   "name": "reinforcement-learning-agents",
+   "description": "Design and train reinforcement learning agents — environment setup, reward shaping, policy gradient methods, and evaluation.",
+   "stars": 1914,
+   "pushed_at": "2026-11-01T17:01:59Z",
+   "grade": 2
+  },
+  {
+   "id": "lawve-ai/awesome-legal-skills:route-legal-research",
+   "name": "route-legal-research",
+   "description": "Pick the right LLM for LEGAL RESEARCH & ANALYSIS — issue-spotting, rule application, case/statute analysis, memos, and multi-step agentic research. Vendor-neutral routing grounded in mid-2026 benchmarks (Vals AI LegalBench across 124 models; Harvey Legal Agent Benchmark for agentic work). Asks up to 4 quick questions (cost, speed, accuracy/stakes, privacy/jurisdiction/language), then recommends a primary model + fallback + what to avoid + what a human must verify. Use when someone asks \"which model for legal research / case analysis / a memo\", \"best AI for legal reasoning\", \"route this research task\", or is starting legal analysis without a fixed model.",
+   "stars": 957,
+   "pushed_at": "2026-10-19T16:51:56Z",
+   "grade": 0
+  },
+  {
+   "id": "anthropics/claude-plugins-official:skill-creator",
+   "name": "skill-creator",
+   "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+   "stars": 47417,
+   "pushed_at": "2026-11-16T07:42:22Z",
+   "grade": 1
+  },
+  {
+   "id": "confident-ai/deepeval:deepeval-otel",
+   "name": "deepeval-otel",
+   "description": "Export raw OpenTelemetry traces from an AI application to Confident AI's Observatory. TRIGGER when the user wants to send OpenTelemetry or OTLP traces/spans from an LLM app, agent, RAG pipeline, or chatbot to Confident AI; configure the Confident AI OTLP endpoint; set confident.span.* or confident.trace.* attributes; export AI-app traces without the deepeval Python package; wire an OTLPSpanExporter, OpenTelemetry Collector, or vendor-neutral OTel SDK to Confident AI; or pick the US vs EU OTLP endpoint. Language-agnostic: the mechanism is OTLP attribute keys plus an exporter endpoint. DO NOT TRIGGER for building DeepEval pytest eval suites, datasets, goldens, metrics, or deepeval test run (use the `deepeval` skill); for instrumenting with the DeepEval SDK's @observe decorator or framework integrations (use the `deepeval-tracing` skill); or for non-AI software such as web servers, CRUD backends, or infrastructure: the confident.* attributes describe AI components only.",
+   "stars": 19507,
+   "pushed_at": "2026-11-16T00:36:11Z",
+   "grade": 0
+  },
+  {
+   "id": "comet-ml/opik-mcp:opik-evaluate",
+   "name": "opik-evaluate",
+   "description": "Build an LLM evaluation and run it against the app, returning an Opik experiment with scores and its link. Picks a test suite with judge assertions or a dataset with metrics, sources cases from traces or synthetic data, scores heuristics-first then one-failure-mode judges, runs client-side via the SDK or server-side for prompt-only targets, and reads the scores back. Covers RAG evaluation, error analysis, writing and validating LLM judges against human labels, and auditing an existing eval pipeline. Use for \"evaluate my agent\", \"measure quality\", \"build an eval\", \"write an LLM judge for hallucinations\", \"audit our evaluation pipeline\", \"how good is my RAG\", \"set up evals for this\". Not for before/after on an existing suite (use compare), one regression case (use test), scoring production traffic (use online-eval), or the ship/hold decision (use verify).",
+   "stars": 226,
+   "pushed_at": "2026-11-14T16:33:38Z",
+   "grade": 1
+  },
+  {
+   "id": "comet-ml/opik-mcp:opik-online-eval",
+   "name": "opik-online-eval",
+   "description": "Take a judge live on production traffic — create an Opik online evaluation rule (LLM-as-judge or Python metric) on a project with sampling, filters, variable mapping, and a cost cap, then confirm new traces are being scored. Works over the SDK's REST client; reads rules and score names via the MCP when connected. Returns the rule, the score name it emits, and how to watch it. Use for \"score production traces\", \"monitor hallucinations in prod\", \"take this judge live\", \"set up an online evaluation rule\", \"alert me when quality drops\". Not for offline experiments (use evaluate or compare) or for finding what is already broken (use diagnose).",
+   "stars": 226,
+   "pushed_at": "2026-11-14T16:33:38Z",
+   "grade": 0
+  },
+  {
+   "id": "czlonkowski/n8n-skills:n8n-code-tool",
+   "name": "n8n-code-tool",
+   "description": "Write JavaScript or Python for the n8n Custom Code Tool (@n8n/n8n-nodes-langchain.toolCode) — the AI-agent-callable tool, NOT the workflow Code node. Use when building a Code Tool attached to an AI Agent, writing code that an LLM will invoke, parsing the `query` input, returning a string result, defining an input schema for structured arguments (specifyInputSchema, jsonSchemaExample, DynamicStructuredTool), or troubleshooting errors like \\\"Wrong output type returned\\\", \\\"No execution data available\\\", \\\"The response property should be a string, but it is an object\\\", \\\"Cannot assign to read only property 'name'\\\", or an AI agent that refuses to call the tool. Covers the critical differences between Code node and Code Tool: return format (string vs `[{json:{...}}]`), unavailability of `$fromAI`/`$input`/`$helpers` in the Code Tool sandbox, naming rules for AI invocation, and when to use `toolWorkflow`/HTTP Request Tool instead.",
+   "stars": 6654,
+   "pushed_at": "2026-10-24T11:44:27Z",
+   "grade": 0
+  },
+  {
+   "id": "NVIDIA/skills:rag-eval",
+   "name": "rag-eval",
+   "description": "Filesystem RAG benchmarks: corpus/, train.json, evaluate_rag.py (RAGAS quality). Not for prod monitoring, latency/throughput benchmarking (use rag-perf), or evals outside this repo layout.",
+   "stars": 4013,
+   "pushed_at": "2026-11-15T23:08:27Z",
+   "grade": 0
+  },
+  {
+   "id": "expo/skills:expo-skill-eval",
+   "name": "expo-skill-eval",
+   "description": "Evaluate Expo skills in this repo end-to-end - trigger accuracy, generated code quality, and runtime screenshots on iOS simulator and Android emulator via Expo Go (web optional). Use when the user wants to eval an Expo skill, test that a skill produces working code, benchmark a skill with device screenshots, or verify a skill's output renders correctly.",
+   "stars": 4165,
+   "pushed_at": "2026-11-15T22:20:40Z",
+   "grade": 0
+  },
+  {
+   "id": "26zl/cybersec-toolkit:ai-llm-security-review",
+   "name": "ai-llm-security-review",
+   "description": "Use for AI/LLM security assessments, prompt injection, RAG security, agent/tool permissioning, model supply chain, LLM red teaming, AI governance, eval design, data leakage, jailbreak testing, and secure AI application review.",
+   "stars": 95,
+   "pushed_at": "2026-11-02T16:08:13Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:grade-iterate",
+   "name": "grade-iterate",
+   "description": "Use when a launched managed agent needs grading against a rubric and improving ('grade my agent', 'is it good enough'). Builds the outcome with outcome_builder.py, reads verdicts with verdict_reader.py and runs held-back evals from eval_scaffold.py.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 1
+  },
+  {
+   "id": "alirezarezvani/claude-skills:caio-review",
+   "name": "caio-review",
+   "description": "Use for /c-level-agents:caio-review, or to challenge a plan involving AI (no eval set, API vs fine-tune vs self-host, EU AI Act class).",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:cross-eval",
+   "name": "cross-eval",
+   "description": "Use for /c-level-agents:cross-eval, or when a high-stakes memo needs independent review by several models before the boardroom.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:agent-regression-evals",
+   "name": "agent-regression-evals",
+   "description": "Use before shipping any agent, prompt, model or tool change, or when a pass-rate drop needs a verdict. Runs repeated trials, gates candidate vs baseline with paired statistics in regression_gate.py, checks tool-call trajectories and finds flaky cases.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 2
+  },
+  {
+   "id": "alirezarezvani/claude-skills:eval",
+   "name": "eval",
+   "description": "Rank finished AgentHub agents by metric or judge. Use when asked which agent won.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:autoresearch-agent",
+   "name": "autoresearch-agent",
+   "description": "Make a file measurably better by trial: faster code, smaller bundle, higher pass rate or prompt score. Use whenever the user wants something optimized against a metric, before hand-tuning; loops edits, keeps wins, resets losses. Needs an eval command.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 1
+  },
+  {
+   "id": "alirezarezvani/claude-skills:setup",
+   "name": "setup",
+   "description": "Use for /autoresearch-agent:setup, or to start a new autoresearch experiment: target, eval command, metric, direction, evaluator.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "HKUDS/Vibe-Trading:vibe-trading",
+   "name": "vibe-trading",
+   "description": "Professional finance research toolkit — backtesting (12 engines + benchmark comparison panel), factor analysis, Alpha Zoo (478 pre-built alphas across qlib158/alpha101/gtja191/academic/fundamental), options pricing, 89 finance skills, 30 multi-agent swarm teams, Trade Journal analyzer, and Shadow Account (extract → backtest → render) across 28 market-data sources (tushare, yfinance, okx, binance, akshare, baostock, tencent, mootdx, ccxt, futu, mt5, tickerall, local, eastmoney, sina, stooq, yahoo, pykrx, india_broker, longbridge, nobitex, wallex, plus optional-key finnhub/alphavantage/tiingo/fmp/gildata).",
+   "stars": 38359,
+   "pushed_at": "2026-11-16T08:30:18Z",
+   "grade": 0
+  },
+  {
+   "id": "elie222/inbox-zero:testing",
+   "name": "testing",
+   "description": "Guidelines for testing the application with Vitest, including unit tests, integration tests (emulator), AI tests, and eval suites for LLM features",
+   "stars": 13038,
+   "pushed_at": "2026-11-16T10:46:26Z",
+   "grade": 0
+  },
+  {
+   "id": "wshobson/agents:grpo-rlvr-training",
+   "name": "grpo-rlvr-training",
+   "description": "Train reasoning and verifiable-task behavior with GRPO and reinforcement learning from verifiable rewards (RLVR). Use when task success is algorithmically checkable (math, code, tool calls, structured output), when designing GRPO reward functions, or when a GRPO run diverges or reward-hacks.",
+   "stars": 42570,
+   "pushed_at": "2026-11-16T01:08:59Z",
+   "grade": 2
+  },
+  {
+   "id": "github/awesome-copilot:arize-evaluator",
+   "name": "arize-evaluator",
+   "description": "Handles LLM-as-judge evaluation workflows on Arize including creating/updating evaluators, running evaluations on spans or experiments, managing tasks, trigger-run operations, column mapping, and continuous monitoring. Use when the user mentions create evaluator, LLM judge, hallucination, faithfulness, correctness, relevance, run eval, score spans, score experiment, trigger-run, column mapping, continuous monitoring, or improve evaluator prompt.",
+   "stars": 41211,
+   "pushed_at": "2026-11-16T02:39:23Z",
+   "grade": 1
+  },
+  {
+   "id": "github/awesome-copilot:phoenix-evals",
+   "name": "phoenix-evals",
+   "description": "Build and run evaluators for AI/LLM applications using Phoenix.",
+   "stars": 41211,
+   "pushed_at": "2026-11-16T02:39:23Z",
+   "grade": 1
+  },
+  {
+   "id": "affaan-m/ECC:agentic-engineering",
+   "name": "agentic-engineering",
+   "description": "Operate as an agentic engineer using eval-first execution, decomposition, and cost-aware model routing. Use when AI agents perform most implementation work and humans enforce quality and risk controls.",
+   "stars": 304103,
+   "pushed_at": "2026-11-16T04:55:46Z",
+   "grade": 1
+  },
+  {
+   "id": "sangrokjung/claude-forge:eval-harness",
+   "name": "eval-harness",
+   "description": "Formal evaluation framework for Claude Code sessions implementing eval-driven development (EDD) principles",
+   "stars": 882,
+   "pushed_at": "2026-09-03T11:14:41Z",
+   "grade": 1
+  },
+  {
+   "id": "getpaseo/paseo:paseo-advisor",
+   "name": "paseo-advisor",
+   "description": "Spin up a single agent as an advisor — second opinion on the current task. Use when the user says \"advisor\", \"second opinion\", \"what does X think\", or wants an outside take without delegating the work itself.",
+   "stars": 24159,
+   "pushed_at": "2026-11-16T10:16:51Z",
+   "grade": 0
+  },
+  {
+   "id": "mukul975/Anthropic-Cybersecurity-Skills:securing-agentic-ai-tool-invocation",
+   "name": "securing-agentic-ai-tool-invocation",
+   "description": "Implements defense-in-depth controls at an AI agent's tool-invocation",
+   "stars": 36221,
+   "pushed_at": "2026-08-31T04:32:44Z",
+   "grade": 0
+  },
+  {
+   "id": "Umair/stalemap:sync",
+   "name": "sync",
+   "description": "Write or refresh the stalemap block in AGENTS.md or CLAUDE.md, listing dependencies that changed after the model's training cutoff.",
+   "stars": 109,
+   "pushed_at": "2026-11-01T16:17:08Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:hub-run",
+   "name": "hub-run",
+   "description": "Use for /hub-run, or to run a whole AgentHub competition end to end: init, baseline, spawn, eval and merge.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "ffroliva/gflow-cli:llm-council",
+   "name": "llm-council",
+   "description": "Use when a pr-council-review (PR or branch mode) result needs independent corroboration from a different model family before trusting a GREEN verdict — high-stakes, security-sensitive, or architecturally significant reviews where same-model-family Claude subagents might share a blind spot. Also use when the user asks for \"external\", \"second opinion\", \"cross-model\", or names codex/antigravity (`agy`) or another external CLI coding agent alongside a review.",
+   "stars": 371,
+   "pushed_at": "2026-11-09T08:18:14Z",
+   "grade": 0
+  },
+  {
+   "id": "swarmclawai/andrej-karpathy-skills:adapters/mcpjam/.mcpjam/skills/karpathy-guidelines",
+   "name": "karpathy-guidelines",
+   "description": "Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.",
+   "stars": 58,
+   "pushed_at": "2026-05-11T12:43:50Z",
+   "grade": 0
+  },
+  {
+   "id": "NeoLabHQ/context-engineering-kit:plugins/customaize-agent/skills/create-agent",
+   "name": "create-agent",
+   "description": "Comprehensive guide for creating Claude Code agents with proper structure, triggering conditions, system prompts, and validation - combines official Anthropic best practices with proven patterns",
+   "stars": 1832,
+   "pushed_at": "2026-08-26T21:08:01Z",
+   "grade": 0
+  },
+  {
+   "id": "a5c-ai/babysitter:cutlass-triton",
+   "name": "cutlass-triton",
+   "description": "High-performance kernel template libraries and DSLs. Generate CUTLASS GEMM configurations, implement Triton kernel definitions, configure epilogue operations, tune tile sizes and warp arrangements, and benchmark against cuBLAS.",
+   "stars": 1914,
+   "pushed_at": "2026-11-01T17:01:59Z",
+   "grade": 0
+  },
+  {
+   "id": "microsoft/skills:m365-agents-dotnet",
+   "name": "m365-agents-dotnet",
+   "description": "Microsoft 365 Agents SDK for .NET. Build multichannel agents for Teams/M365/Copilot Studio with ASP.NET Core hosting, AgentApplication routing, and MSAL-based auth. Triggers: \"Microsoft 365 Agents SDK\", \"Microsoft.Agents\", \"AddAgentApplicationOptions\", \"AgentApplication\", \"AddAgentAspNetAuthentication\", \"Copilot Studio client\", \"IAgentHttpAdapter\".",
+   "stars": 3209,
+   "pushed_at": "2026-11-13T22:48:25Z",
+   "grade": 0
+  },
+  {
+   "id": "makenotion/notion-cookbook:apps/templates/krillion-leaderboard/.agents/skills/notion-as-code",
+   "name": "notion-as-code",
+   "description": "Declare Notion pages, databases, teamspaces, and custom agents in an App, including data sources used by syncs.",
+   "stars": 230,
+   "pushed_at": "2026-11-16T03:27:24Z",
+   "grade": 0
+  },
+  {
+   "id": "VoDaiLocz/kilo-kit-mcp:backend-development",
+   "name": "backend-development",
+   "description": "Build robust backend systems with modern technologies (Node.js, Python, Go, Rust), frameworks (NestJS, FastAPI, Django), databases (PostgreSQL, MongoDB, Redis), APIs (REST, GraphQL, gRPC), authentication (OAuth 2.1, JWT), testing strategies, security best practices (OWASP Top 10), performance optimization, scalability patterns (microservices, caching, sharding), DevOps practices (Docker, Kubernetes, CI/CD), and monitoring. Use when designing APIs, implementing authentication, optimizing database queries, setting up CI/CD pipelines, handling security vulnerabilities, building microservices, or developing production-ready backend systems.",
+   "stars": 28,
+   "pushed_at": "2026-11-15T10:45:57Z",
+   "grade": 0
+  },
+  {
+   "id": "affaan-m/ECC:counterparty-channel-discipline",
+   "name": "counterparty-channel-discipline",
+   "description": "Per-channel strict prompts, mention gating, silent observation, and a communication autonomy policy for agents that sit in shared channels with external counterparties. Use when an agent joins group chats, shared channels, or DMs where outsiders can read every message and you need it to speak only when addressed, never leak internal context, and route risky content to draft-only approval.",
+   "stars": 304103,
+   "pushed_at": "2026-11-16T04:55:46Z",
+   "grade": 0
+  },
+  {
+   "id": "rmyndharis/antigravity-skills:langchain-architecture",
+   "name": "langchain-architecture",
+   "description": "Design LLM applications using the LangChain framework with agents, memory, and tool integration patterns. Use when building LangChain applications, implementing AI agents, or creating complex LLM workflows.",
+   "stars": 2025,
+   "pushed_at": "2026-11-07T15:24:20Z",
+   "grade": 0
+  },
+  {
+   "id": "hermes-labs-ai/lintlang:integrations/copilot-cli/skills/lintlang-audit",
+   "name": "lintlang-audit",
+   "description": "Audit a named AI agent config, system prompt, tool definition, or instruction file (YAML, JSON, Markdown, text, or Python) with the released LintLang CLI in GitHub Copilot CLI. Use when the user asks to audit, lint, scan, or review such a file for ambiguous tool descriptions, missing stop conditions, schema mismatches, or embedded prompts. Deterministic static analysis with no model or network call during a scan.",
+   "stars": 147,
+   "pushed_at": "2026-11-09T20:45:24Z",
+   "grade": 0
+  },
+  {
+   "id": "kharmanskyi/open-steps:os-what-could-go-wrong",
+   "name": "os-what-could-go-wrong",
+   "description": "ALWAYS invoke this skill before anything hard to undo gets agreed to - a contract, a purchase, a migration, a launch, a price change, a reorganisation - and whenever the user asks \"what could go wrong\", \"what are we missing\", \"poke holes in this\", or for a premortem or a red team, in any language. Assumes the decision already failed and works backwards to find out why, in a fresh agent that had no hand in making it. Sweeps nine areas and shows what each produced, including the empty ones. Ends on one verdict: go ahead, go but fix these first, try it small first, think again, do not do this.",
+   "stars": 1284,
+   "pushed_at": "2026-11-15T17:23:12Z",
+   "grade": 0
+  },
+  {
+   "id": "a5c-ai/babysitter:scikit-hep-analysis",
+   "name": "scikit-hep-analysis",
+   "description": "Scikit-HEP toolkit skill for particle physics data analysis with modern Python tools",
+   "stars": 1914,
+   "pushed_at": "2026-11-01T17:01:59Z",
+   "grade": 0
+  },
+  {
+   "id": "elementalsouls/Claude-BugHunter:hunt-nodejs",
+   "name": "hunt-nodejs",
+   "description": "Hunt Node.js specific vulnerabilities — Prototype Pollution → RCE chains (lodash/merge/assign), Express trust proxy misconfiguration, child_process/eval injection, template engine SSTI (EJS/Pug/Handlebars), path traversal in file servers, require() injection, environment variable exfil via /proc/self/environ. Use when target runs Node.js/Express/Fastify/NestJS/Koa.",
+   "stars": 6966,
+   "pushed_at": "2026-11-15T11:59:53Z",
+   "grade": 0
+  },
+  {
+   "id": "google/skills:agent-platform-prompt-management",
+   "name": "agent-platform-prompt-management",
+   "description": "Manages and orchestrates prompts in Agent Platform. Use when you need to create, list, retrieve, version, or delete managed prompts in Agent Platform. Don't use for model training, model deployment to endpoints, or managing non-Agent Platform prompts.",
+   "stars": 24352,
+   "pushed_at": "2026-11-16T01:46:01Z",
+   "grade": 0
+  },
+  {
+   "id": "praneybehl/llm-wiki-plugin:llm-wiki",
+   "name": "llm-wiki",
+   "description": "Build and maintain an LLM-curated knowledge base from papers, articles, transcripts, notes and project findings. Ingest sources into linked Markdown, answer questions with citations, lint or upgrade a wiki, and preserve useful synthesis across sessions and agents. Also capture verified task experience, consolidate success/failure patterns, and propose, evaluate, apply or roll back evidence-linked skill improvements. Trigger on \"add this to my wiki\", \"what does the wiki say\", \"learn from this task\", \"improve this procedure\", /wiki:learn or /wiki:evolve. Works on a local folder or a hosted wiki URL (MCP). Use index-first navigation, atomic pages and hybrid search.",
+   "stars": 124,
+   "pushed_at": "2026-10-29T05:46:31Z",
+   "grade": 0
+  },
+  {
+   "id": "rrezartprebreza/spring-boot-skills:skills/spring-boot-4/agent-qa-browser-regression",
+   "name": "agent-qa-browser-regression",
+   "description": "Use when verifying an existing browser journey with agent-qa against a running Spring Boot application. Covers target selection, scoped execution, run evidence, and memidex provenance while preserving backend tests and security contracts.",
+   "stars": 361,
+   "pushed_at": "2026-11-11T14:54:31Z",
+   "grade": 0
+  },
+  {
+   "id": "daveebbelaar/bama:agent-cli",
+   "name": "agent-cli",
+   "description": "Optional command line and MCP server for a macOS app, so Claude Code, Codex, and scripts can drive it (list, add, change, search, act) through the running app. Use when the user wants agents to work with their app or its data, asks for a CLI, an MCP server, or automation for the app, or says \"Claude should be able to use my app\".",
+   "stars": 1840,
+   "pushed_at": "2026-11-05T13:09:56Z",
+   "grade": 0
+  },
+  {
+   "id": "affaan-m/ECC:pi/core/skills/golang-testing",
+   "name": "golang-testing",
+   "description": "Go testing patterns including table-driven tests, subtests, benchmarks, fuzzing, and test coverage. Follows TDD methodology with idiomatic Go practices. Use when writing Go tests — table-driven cases, subtests, benchmarks, fuzzing, or coverage.",
+   "stars": 304103,
+   "pushed_at": "2026-11-16T04:55:46Z",
+   "grade": 0
+  },
+  {
+   "id": "agentic-box/owlex:critique",
+   "name": "critique",
+   "description": "Council critique mode - agents find bugs and flaws in each other's answers",
+   "stars": 141,
+   "pushed_at": "2026-03-15T03:37:28Z",
+   "grade": 0
+  },
+  {
+   "id": "qualixar/superlocalmemory:slm-mesh",
+   "name": "slm-mesh",
+   "description": "Cross-session peer coordination via the SLM mesh network. Lets multiple AI agent sessions on the same machine, and web apps the owner has allowed (ChatGPT, Claude on the web, Grok Bot, Muse, Composio), discover each other, send messages, wait for replies with mesh_wait, share lightweight state, and lock files to avoid conflicts. Covers the at-least-once delivery rule for web apps (pass ack_ids back as ack) and the two permissions a web app needs. Available in the default tool set and in the full, power and mesh MCP profiles. Only `slm mesh status` and `slm mesh peers` exist on the command line; the other tools are MCP-only.",
+   "stars": 278,
+   "pushed_at": "2026-11-14T12:36:53Z",
+   "grade": 0
+  },
+  {
+   "id": "alirezarezvani/claude-skills:mcp-server-builder",
+   "name": "mcp-server-builder",
+   "description": "Use when exposing an API as an MCP server or scaffolding a new MCP server in Python or TypeScript, before hand-writing tool wrappers. Generates tools from OpenAPI with openapi_to_mcp.py and validates them with mcp_validator.py.",
+   "stars": 29875,
+   "pushed_at": "2026-11-16T08:02:52Z",
+   "grade": 0
+  },
+  {
+   "id": "affaan-m/ECC:skills/python-patterns",
+   "name": "python-patterns",
+   "description": "Pythonic idioms, PEP 8 standards, type hints, and best practices for building robust, efficient, and maintainable Python applications. Use when writing or reviewing Python code and idiomatic structure, typing, or PEP 8 is in question.",
+   "stars": 304103,
+   "pushed_at": "2026-11-16T04:55:46Z",
+   "grade": 1
+  },
+  {
+   "id": "cloudishai/skills:cloudish",
+   "name": "cloudish",
+   "description": "Cloudish deploys apps as long-lived containers with a public URL, such as websites, APIs, bots, workers and MCP servers. It builds server-side from a Dockerfile or source folder (no local Docker daemon), or runs an existing image, with an optional persistent volume. An AI agent creates its own API key with one call and no signup; credits are prepaid and metered per second, so spend never exceeds the key's balance. Use when a task involves deploying, hosting or putting an app online, and whenever a task names Cloudish.",
+   "stars": 140,
+   "pushed_at": "2026-11-07T00:24:13Z",
+   "grade": 0
+  },
+  {
+   "id": "testdriverai/testdriverai:testdriver-agent",
+   "name": "testdriver-agent",
+   "description": "How the TestDriver agent behaves on GitHub issues, pull requests, and @mentions",
+   "stars": 357,
+   "pushed_at": "2026-09-21T14:03:59Z",
+   "grade": 0
+  },
+  {
+   "id": "HatmanStack/RAGStack-Lambda:pipeline",
+   "name": "pipeline",
+   "description": "Run the adversarial plan-implement-review pipeline. Spawns agents for each role with their own context windows. Use after /brainstorm, /repo-eval, /repo-health, or /doc-health has produced a starting doc.",
+   "stars": 26,
+   "pushed_at": "2026-11-13T20:21:08Z",
+   "grade": 0
+  },
+  {
+   "id": "OneWave-AI/claude-skills:overnight-repo-auditor",
+   "name": "overnight-repo-auditor",
+   "description": "Uses Managed Agents' 14.5-hour runtime to audit an entire codebase overnight. Security, performance, accessibility, dependency issues. You wake up to a full report.",
+   "stars": 430,
+   "pushed_at": "2026-10-20T01:13:20Z",
+   "grade": 0
+  },
+  {
+   "id": "prassanna-ravishankar/repowire:cross-agent-review",
+   "name": "cross-agent-review",
+   "description": "Ask an existing local coding agent for an independent code, PR, or design review through Repowire remote MCP.",
+   "stars": 275,
+   "pushed_at": "2026-11-05T16:47:08Z",
+   "grade": 0
+  },
+  {
+   "id": "kenryu42/cc-safety-net:cc-safety-net",
+   "name": "cc-safety-net",
+   "description": "Operate CC Safety Net: explain why a command was blocked, triage false positives, configure custom rulebooks, manage agent CLI integrations, and diagnose protection.",
+   "stars": 2055,
+   "pushed_at": "2026-11-15T09:08:41Z",
+   "grade": 0
+  },
+  {
+   "id": "HKUDS/Vibe-Trading:performance-attribution",
+   "name": "performance-attribution",
+   "description": "Performance attribution analysis — Brinson sector/stock-selection attribution, factor alpha/beta decomposition, market-timing evaluation, and benchmark comparison framework.",
+   "stars": 38359,
+   "pushed_at": "2026-11-16T08:30:18Z",
+   "grade": 0
+  }
+ ]
+}

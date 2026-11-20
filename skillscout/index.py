@@ -17,7 +17,7 @@ MIRRORS = ("https://raw.githubusercontent.com/akshit9162/skillscout/index-data/i
            "https://cdn.jsdelivr.net/gh/akshit9162/skillscout@index-data/index.json.gz")
 TIMEOUT = 15            # seconds without a byte before a source counts as down
 VERSION = 1
-FIELDS = ("id", "repo", "repo_id", "name", "description", "path", "commit", "stars", "license", "pushed_at", "flags", "risk", "scan_key", "audits")
+FIELDS = ("id", "repo", "repo_id", "name", "description", "path", "commit", "stars", "license", "pushed_at", "created_at", "flags", "risk", "scan_key", "audits")
 
 
 class Unavailable(Exception):

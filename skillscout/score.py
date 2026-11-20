@@ -59,18 +59,54 @@ def _affirmed(text: str) -> str:
     return " ".join(kept)
 
 
+# Puffery never counts as a match: implicit description poisoning (TrustDesc 2026, ToolTweak 2025) works
+# through exactly this wording. A description that orders the agent to use the skill is shown by `show`, not
+# scored: on the judged pool a penalty for it pushed a top pick down (nDCG@10 73.9 -> 72.1).
+PROMO = re.compile(r"\b(?:best|ultimate|leading|premier|powerful|seamless(?:ly)?|effortless(?:ly)?|perfect|flawless|"
+                   r"revolutionary|unmatched|unrivall?ed|supercharged?|world[ -]class|cutting[ -]edge|"
+                   r"state[ -]of[ -]the[ -]art|top[ -]rated|award[ -]winning|industry[ -]leading)\b", re.I)
+PUSHY = re.compile(r"\b(?:always|must|proactively)\s+(?:use|invoke|load|trigger|call|run|activate|apply)\b"
+                   r"|\b(?:use|invoke|load)\s+this\s+skill\s+(?:proactively|always|for (?:any|every|all))\b", re.I)
+
+
+# BM25's length normalisation (Robertson & Zaragoza 2009), pivoted on the mean name+description length
+# across the index (43 words, 2026-11-20). Only ever lowers a score: a description padded with trigger
+# lists ("Also use when the user mentions ...") hits more keywords by being long, not by being relevant.
+AVG_WORDS, LENGTH_B = 43, 0.5
+
+
 def relevance(text: str, keywords: dict[str, float]) -> tuple[float, list[str]]:
     """Share of the best achievable keyword weight this text hits, capped so 3 strong matches reach 1.
     A keyword phrase matches when its words appear in order, in any word form, outside what the text
-    says it does not do."""
-    low = f" {_words(_affirmed(text))} "
+    says it does not do. Longer-than-average texts are scaled down."""
+    words = _words(_affirmed(PROMO.sub(" ", text)))
+    low = f" {words} "
     hits = [k for k in keywords if f" {_phrase(k)} " in low]
     top = sorted(keywords.values(), reverse=True)[:3]
-    return min(sum(keywords[k] for k in hits) / max(sum(top), 1e-9), 1.0), hits
+    share = min(sum(keywords[k] for k in hits) / max(sum(top), 1e-9), 1.0)
+    pivot = 1 - LENGTH_B + LENGTH_B * len(_words(text).split()) / AVG_WORDS
+    return share / max(pivot, 1.0), hits
 
 
 def popularity(stars: int) -> float:
     return min(math.log10(max(stars, 1)) / 4, 1.0)          # 10k stars = 1.0
+
+
+def momentum(stars: int, created_at: str | None = None, snapshots: list | None = None,
+             now: datetime | None = None) -> float:
+    """Stars gained per week, on a log scale where 100 a week = 1.0. A new repo gaining fast can match an old one
+    with thousands of stars. The real gain since a snapshot at least 4 days old when there is one; else the
+    average since the repo was created; else (an old index without creation dates) total stars as before."""
+    now = now or datetime.now(timezone.utc)
+    day = lambda s: datetime.fromisoformat(s.replace("Z", "+00:00")[:10]).replace(tzinfo=timezone.utc)
+    old = [x for x in (snapshots or []) if (now - day(x[0])).days >= 4]
+    if old:
+        per_week = max(stars - old[-1][1], 0) / (now - day(old[-1][0])).days * 7
+    elif created_at:
+        per_week = stars / max((now - datetime.fromisoformat(created_at.replace("Z", "+00:00"))).days / 7, 1)
+    else:
+        return popularity(stars)
+    return min(math.log10(1 + per_week) / math.log10(101), 1.0)
 
 
 def freshness(pushed_at: str | None, now: datetime | None = None) -> float:
@@ -81,11 +117,8 @@ def freshness(pushed_at: str | None, now: datetime | None = None) -> float:
     return max(0.0, 1 - days / 365)
 
 
-def combined(rel: float, pop: float, fresh: float, trusted: bool, effectiveness: float | None = None) -> float:
-    """Relevance plus a quality prior. Stars measure attention, not whether a skill works, so once a skill has
-    a measured effectiveness (the same task with and without it) that takes most of the stars' weight."""
-    quality = 0.2 * pop if effectiveness is None else 0.05 * pop + 0.15 * effectiveness
-    return round(min(0.65 * rel + quality + 0.15 * fresh + (0.1 if trusted else 0), 1.0), 3)
+def combined(rel: float, pop: float, fresh: float, trusted: bool) -> float:
+    return round(min(0.65 * rel + 0.2 * pop + 0.15 * fresh + (0.1 if trusted else 0), 1.0), 3)
 
 
 def feedback(text: str, kept: list[set[str]], rejected: list[set[str]], overlap_at: float) -> float:

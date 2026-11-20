@@ -8,6 +8,7 @@ from importlib import metadata
 from pathlib import Path
 
 from . import __doc__ as ABOUT, audits, core, github, history, index, install, persona, schedule, switch
+from .score import PUSHY
 from .skill import skill_files
 from .store import toml_str, write_toml
 
@@ -144,6 +145,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"{c['id']}  @{c['commit'][:10]}\n  score {c['score']:.2f}, {c['stars']} stars, licence {c['license'] or 'none'}, "
               f"risk {core.risk_word(c)}\n  matched: {', '.join(c['matched']) or 'nothing in your keywords'}"
               + (f"\n  overlaps: {'; '.join(c['conflicts'])}" if c["conflicts"] else ""))
+        if m := PUSHY.search(c["description"]):
+            print(f"  note: its description orders the agent to use it (\"{m.group(0)}\"), so it may fire on prompts it was not written for")
         for f in c["flags"]:
             print(f"  [{f['level']}] {f['reason']} — {f['where']}")
         if "audits" in c:

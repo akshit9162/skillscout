@@ -9,7 +9,7 @@ from pathlib import Path
 from . import audits, github, index, persona
 from .install import pick, rejected
 from .scan import HIGH, RULES, scan, worst
-from .score import combined, conflicts, diversify, feedback, freshness, popularity, relevance, tokens
+from .score import combined, conflicts, diversify, feedback, freshness, momentum, relevance, tokens
 from .skill import VENDORED, find_skills, licensed, parse_frontmatter, plugin_skills
 from .store import load_toml, read_json as _read, write_json as _write
 
@@ -31,6 +31,7 @@ class Paths:
         self.index = state / "index.json.gz"  # the last shared index downloaded
         self.repos = state / "repos.json"     # each repo's metadata, push time, checkout and commit at the last run
         self.lock = state / "skills.lock.json"
+        self.stars = state / "stars.json"     # each repo's star count at recent runs, for momentum
         self.backups = state / "backups"     # the copy each install replaced, for `rollback`
         self.reports = state / "reports"
 
@@ -209,7 +210,7 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
             records.append({
                 "id": cid, "repo": r["full_name"], "repo_id": r.get("id"), "name": sk.name, "description": sk.description,
                 "path": rel, "commit": commit, "stars": r["stars"],
-                "license": r["license"], "pushed_at": r["pushed_at"],
+                "license": r["license"], "pushed_at": r["pushed_at"], "created_at": r.get("created_at"),
                 "flags": flags, "risk": worst(flags), "scan_key": key,
             })
     print(f"scanned {len(records) - reused} skills, reused {reused} unchanged")
@@ -217,10 +218,13 @@ def crawl(s: dict, paths: Paths, fetch=github, full: bool = False) -> list[dict]
     return records
 
 
-def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
+NEW_REPO_BOOST = 0.05     # a repo first seen this week (not on the first run, when every repo is new)
+
+
+def score(records: list[dict], profile: dict, paths: Paths, now: datetime | None = None) -> list[dict]:
     """The personal part: relevance to this profile's keywords, conflicts with what's installed, what's new.
     Writes candidates.json and returns the candidates, best first."""
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
     trusted = set(profile.get("search", {}).get("trusted", []))
     installed = installed_skills(paths)
     locked = _read(paths.lock, {})
@@ -235,18 +239,32 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
     kept = [tokens(f"{r['name']} {r['description']}") for r in records if r["id"] in locked]
     said_no = rejected(paths)
     nope = [tokens(f"{v['name']} {v['description']}") for v in said_no.values()]
+    # Discovery wants what is gaining attention now, not what piled up stars years ago: keep a small per-repo
+    # star history on this machine, so momentum is the real weekly gain once a repo has been seen before.
+    history = _read(paths.stars, {})
+    first_run = not history
+    now_s = now.isoformat(timespec="seconds")
+    for repo, stars in {r["repo"]: r["stars"] for r in records}.items():
+        # Repos on the first run were already there; only ones that appear later count as new.
+        h = history.setdefault(repo, {"first_seen": None if first_run else now_s, "snapshots": []})
+        snaps = [x for x in h["snapshots"] if x[0] != now_s[:10]]
+        h["snapshots"] = (snaps + [[now_s[:10], stars]])[-8:]
+    _write(paths.stars, history)
     for r in records:
         text = f"{r['name']} {r['description']}"
+        h = history[r["repo"]]
+        fresh_repo = bool(h["first_seen"]) and (now - datetime.fromisoformat(h["first_seen"])).days < 7
         fit = {name: relevance(text, kw) for name, kw in sets.items()}
         rel = max((f[0] for f in fit.values()), default=0.0)
         hits = sorted({h for f in fit.values() for h in f[1]})
         candidates.append({
             **r, "trusted": r["repo"] in trusted, "relevance": round(rel, 3), "matched": hits,
             "personas": {name: round(f[0], 3) for name, f in fit.items() if name and f[0] > 0},
-            "score": min(1.0, max(0.0, round(combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted,
-                                             r.get("effectiveness"))
+            "score": min(1.0, max(0.0, round(combined(rel, momentum(r["stars"], r.get("created_at"), h["snapshots"], now),
+                                             freshness(r["pushed_at"], now), r["repo"] in trusted)
+                                    + (NEW_REPO_BOOST if fresh_repo and rel > 0 else 0.0)
                                     + (feedback(text, kept, nope, overlap_at) if rel > 0 else 0.0), 3))),
-            "rejected": r["id"] in said_no,
+            "rejected": r["id"] in said_no, "new_repo": fresh_repo,
             "conflicts": conflicts(r["name"], r["description"], installed, profile["scoring"]["overlap_at"]),
             "installed": r["id"] in locked or (r.get("repo_id"), r["path"]) in pinned, "new": r["id"] not in previous,
         })

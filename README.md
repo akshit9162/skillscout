@@ -170,11 +170,15 @@ Each published index carries a signed [build attestation](https://docs.github.co
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
 | **Audit** (weekly job) | Asks [skills.sh](https://skills.sh) for its Gen, Socket and Snyk audits of each skill and stores them in the index. Your machine never calls skills.sh ([below](#second-opinion-from-skillssh)). |
-| **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural, and not where the skill says it does *not* do something), 20% stars, 15% freshness, plus a bonus for trusted repos. A skill with a measured effectiveness in the index swaps most of the star weight for it. Skills like ones you installed move up a little; skills like ones you rejected move down more. The report spreads its top picks so near-copies of one idea don't fill it (`diversity` under `[scoring]`). |
+| **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural, not where the skill says it does *not* do something, and not on puffery like "best" or "powerful"; descriptions longer than the index average are scaled down, as in BM25), 20% momentum (stars gained per week, measured on your machine between runs, or averaged since the repo was created, so a new repo that is taking off can match an old one with thousands of stars), 15% freshness, plus a bonus for trusted repos. A repo that first appears this week gets a small boost. Skills like ones you installed move up a little; skills like ones you rejected move down more. The report spreads its top picks so near-copies of one idea don't fill it (`diversity` under `[scoring]`). |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
 | **Approve** | You pick one. It's fetched and scanned again on your machine (that scan decides), then copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
 | **Update** | `skillscout updates` diffs each pinned skill against upstream and applies nothing. Taking an update re-runs the scan, builds the new copy beside the old one and swaps them; if any step fails, the old copy and its pin stay. `skillscout rollback <id>` puts back the version an update replaced. |
+
+## Measuring the ranking
+
+Ranking changes are measured against a hand-graded pool of 71 real skills (`tests/eval/pool.json`, `python -m skillscout.evaluate`). The grades are one judge's, so corrections are welcome.
 
 ## What gets flagged
 
