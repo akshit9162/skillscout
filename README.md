@@ -153,6 +153,7 @@ skillscout discover          # score this week's index; writes ~/.skillscout/rep
 skillscout list              # ranked; REC = recommended
 skillscout show <id>         # every flag plus the full SKILL.md, before you decide
 skillscout approve <id>      # copy into ~/.claude/skills and pin the commit
+skillscout reject <id>       # never recommend it; rank look-alikes lower (--undo takes it back)
 ```
 
 `<id>` is `owner/repo:skill-name`. The bare skill name works when it's unique. If one repo has two skills with the same name, the second is `owner/repo:path/to/skill`.
@@ -169,7 +170,7 @@ Each published index carries a signed [build attestation](https://docs.github.co
 | **Clone** | Sparse, shallow clones: only folders that contain a `SKILL.md`, minus media and archives, 16 repos at a time. Repos with no push since the last run aren't fetched again. Repo code is never run. |
 | **Scan** | Static checks on every file in the skill, reported with file and line ([below](#what-gets-flagged)). A skill whose folder (git tree hash) and the scanner's rules are both unchanged keeps its last result instead of being read again. |
 | **Audit** (weekly job) | Asks [skills.sh](https://skills.sh) for its Gen, Socket and Snyk audits of each skill and stores them in the index. Your machine never calls skills.sh ([below](#second-opinion-from-skillssh)). |
-| **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural), 20% stars, 15% freshness, plus a bonus for trusted repos. |
+| **Score** (your machine) | 65% relevance to your keywords (phrases match in order, singular or plural, and not where the skill says it does *not* do something), 20% stars, 15% freshness, plus a bonus for trusted repos. A skill with a measured effectiveness in the index swaps most of the star weight for it. Skills like ones you installed move up a little; skills like ones you rejected move down more. The report spreads its top picks so near-copies of one idea don't fill it (`diversity` under `[scoring]`). |
 | **Conflicts** | Compared against your `~/.claude/skills` and plugin skills: same name, or a description close enough that both would fire on the same prompt. |
 | **Report** | What's new since your last run, recommended skills, and relevant ones that are blocked and why. |
 | **Approve** | You pick one. It's fetched and scanned again on your machine (that scan decides), then copied (symlinks dropped) and pinned in `~/.skillscout/skills.lock.json` with its commit and a content hash. |
@@ -214,6 +215,7 @@ high under skillscout's rules. The two catch different things, which is the poin
 | `skillscout list [--all] [-n N]` | Ranked candidates; copies of one skill in forks show once |
 | `skillscout show <id>` | Flags, skills.sh audits, conflicts and the full SKILL.md |
 | `skillscout approve <id> [--update] [--commit SHA] [--accept-risk] [--to DIR]` | Install and pin. `--update` installs exactly the commit `updates` showed you (or `--commit`), and refuses if upstream moved since. `--to`, or `dir` under `[install]` in your profile, installs into another agent's skills folder |
+| `skillscout reject <id> [--undo]` | Never recommend this skill again, and push skills like it down the next ranking. Kept in `~/.skillscout/rejected.json` |
 | `skillscout installed` · `skillscout remove <id> [--force]` · `skillscout rollback <id>` | Pinned skills · uninstall (`--force` if you edited it) · undo the last update |
 | `skillscout updates` | Diff pinned skills against upstream; symlinks are named, never read |
 | `skillscout init [--about "..."]` | Write the profile; `--about` drafts your keywords from one line |

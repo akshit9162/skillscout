@@ -81,8 +81,37 @@ def freshness(pushed_at: str | None, now: datetime | None = None) -> float:
     return max(0.0, 1 - days / 365)
 
 
-def combined(rel: float, pop: float, fresh: float, trusted: bool) -> float:
-    return round(min(0.65 * rel + 0.2 * pop + 0.15 * fresh + (0.1 if trusted else 0), 1.0), 3)
+def combined(rel: float, pop: float, fresh: float, trusted: bool, effectiveness: float | None = None) -> float:
+    """Relevance plus a quality prior. Stars measure attention, not whether a skill works, so once a skill has
+    a measured effectiveness (the same task with and without it) that takes most of the stars' weight."""
+    quality = 0.2 * pop if effectiveness is None else 0.05 * pop + 0.15 * effectiveness
+    return round(min(0.65 * rel + quality + 0.15 * fresh + (0.1 if trusted else 0), 1.0), 3)
+
+
+def feedback(text: str, kept: list[set[str]], rejected: list[set[str]], overlap_at: float) -> float:
+    """Your own decisions, the strongest signal there is: nearness to a skill you kept raises a score, nearness
+    to one you rejected lowers it more. Nearness is measured against overlap_at, the similarity that already
+    counts as a duplicate, so a near-copy gets the full amount."""
+    mine = tokens(text)
+    near = lambda pool: max((min(similarity(mine, t) / overlap_at, 1.0) for t in pool), default=0.0)
+    return round(0.1 * near(kept) - 0.3 * near(rejected), 3)
+
+
+def diversify(items: list[dict], top: int = 25, weight: float = 0.3) -> list[dict]:
+    """Maximal marginal relevance for the first `top`: each pick trades its score against how much it repeats
+    one already picked, so five copies of one idea don't fill the list. The rest keep their order.
+    weight 0 is plain score order."""
+    if weight <= 0 or len(items) < 3:
+        return list(items)
+    pool = items[: top * 4]
+    toks = {id(c): tokens(f"{c['name']} {c['description']}") for c in pool}
+    picked, left = [], list(pool)
+    while left and len(picked) < top:
+        best = max(left, key=lambda c: (1 - weight) * c["score"]
+                   - weight * max((similarity(toks[id(c)], toks[id(p)]) for p in picked), default=0.0))
+        picked.append(best)
+        left.remove(best)
+    return picked + left + items[top * 4:]
 
 
 def similarity(a: str | set[str], b: str | set[str]) -> float:

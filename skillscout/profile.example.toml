@@ -80,3 +80,4 @@ trusted = [
 recommend_at = 0.45     # combined score needed to be recommended
 min_relevance = 0.3     # and at least this much keyword overlap with your work
 overlap_at = 0.35       # description similarity that counts as a conflict with an installed skill
+diversity = 0.3         # 0 to 1: how hard the report spreads its top picks across different ideas (0 = plain score order)

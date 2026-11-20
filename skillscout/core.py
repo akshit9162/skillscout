@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import audits, github, index, persona
-from .install import pick
+from .install import pick, rejected
 from .scan import HIGH, RULES, scan, worst
-from .score import combined, conflicts, freshness, popularity, relevance
+from .score import combined, conflicts, diversify, feedback, freshness, popularity, relevance, tokens
 from .skill import VENDORED, find_skills, licensed, parse_frontmatter, plugin_skills
 from .store import load_toml, read_json as _read, write_json as _write
 
@@ -229,6 +229,12 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
     previous = {c["id"] for c in _read(paths.candidates, [])}
     candidates = []
     sets = persona.keyword_sets(profile)
+    # Rocchio-style feedback: skills you approved pull look-alikes up, skills you rejected push them down.
+    # Only your own decisions count: a plugin's bundled skills were never chosen one by one.
+    overlap_at = profile["scoring"]["overlap_at"]
+    kept = [tokens(f"{r['name']} {r['description']}") for r in records if r["id"] in locked]
+    said_no = rejected(paths)
+    nope = [tokens(f"{v['name']} {v['description']}") for v in said_no.values()]
     for r in records:
         text = f"{r['name']} {r['description']}"
         fit = {name: relevance(text, kw) for name, kw in sets.items()}
@@ -237,7 +243,10 @@ def score(records: list[dict], profile: dict, paths: Paths) -> list[dict]:
         candidates.append({
             **r, "trusted": r["repo"] in trusted, "relevance": round(rel, 3), "matched": hits,
             "personas": {name: round(f[0], 3) for name, f in fit.items() if name and f[0] > 0},
-            "score": combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted),
+            "score": min(1.0, max(0.0, round(combined(rel, popularity(r["stars"]), freshness(r["pushed_at"], now), r["repo"] in trusted,
+                                             r.get("effectiveness"))
+                                    + (feedback(text, kept, nope, overlap_at) if rel > 0 else 0.0), 3))),
+            "rejected": r["id"] in said_no,
             "conflicts": conflicts(r["name"], r["description"], installed, profile["scoring"]["overlap_at"]),
             "installed": r["id"] in locked or (r.get("repo_id"), r["path"]) in pinned, "new": r["id"] not in previous,
         })
@@ -283,11 +292,15 @@ def copies_note(n: int) -> str:
 def recommended(c: dict, profile: dict) -> bool:
     sc = profile["scoring"]
     return (c["score"] >= sc["recommend_at"] and c["relevance"] >= sc.get("min_relevance", 0.3) and c["risk"] != HIGH
-            and not audits.blocked(c.get("audits")) and not c["conflicts"] and not c["installed"])
+            and not audits.blocked(c.get("audits")) and not c["conflicts"] and not c["installed"]
+            and not c.get("rejected"))
 
 
 def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -> tuple[Path, str]:
     rows = dedupe([c for c in candidates if recommended(c, profile)])     # copies of one skill count once
+    # Near-copies of one idea should not fill the top: maximal marginal relevance over the recommended list.
+    order = {id(c): i for i, c in enumerate(diversify([c for c, _ in rows], top, profile["scoring"].get("diversity", 0.3)))}
+    rows.sort(key=lambda row: order[id(row[0])])
     rec, copies = [c for c, _ in rows], {c["id"]: n for c, n in rows}
     more = lambda c: copies_note(copies.get(c["id"], 0))
     flagged = [c for c in candidates if c["risk"] == HIGH and c["relevance"] > 0]
@@ -316,7 +329,8 @@ def report(candidates: list[dict], profile: dict, paths: Paths, top: int = 25) -
             or ["Nothing recommended yet; widen its keywords in your profile."]
     lines += ["", "Install one with `skillscout approve <id>` after reading it with `skillscout show <id>`.", "",
               "## Relevant but blocked", ""]
-    for c in [c for c in candidates if c["relevance"] > 0 and not recommended(c, profile) and not c["installed"]][:top]:
+    for c in [c for c in candidates if c["relevance"] > 0 and not recommended(c, profile) and not c["installed"]
+              and not c.get("rejected")][:top]:
         why = c["conflicts"] + [f"{f['level']}: {f['reason']} ({f['where']})" for f in c["flags"] if f["level"] == HIGH]
         if audits.blocked(c.get("audits")):
             why.append(f"skills.sh: {audits.summary(c['audits'])}")

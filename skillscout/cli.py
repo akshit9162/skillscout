@@ -14,7 +14,7 @@ from .store import toml_str, write_toml
 EXAMPLE = Path(__file__).resolve().parent / "profile.example.toml"
 USER_PROFILE = Path.home() / ".skillscout" / "profile.toml"
 START = 'start with:  skillscout init --about "what you work on"'
-PERSONAL = {"discover", "list", "show", "approve", "persona"}     # meaningless without your own keywords
+PERSONAL = {"discover", "list", "show", "approve", "reject", "persona"}     # meaningless without your own keywords
 
 
 def version() -> str:
@@ -56,6 +56,9 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--accept-risk", action="store_true", help="install despite high-risk flags")
     ap.add_argument("--update", action="store_true", help="replace a copy skillscout installed earlier")
     ap.add_argument("--commit", metavar="SHA", help="refuse unless upstream is still at this commit (the one `updates` showed)")
+    rj = sub.add_parser("reject", help="never recommend this skill, and rank ones like it lower")
+    rj.add_argument("id", help="owner/repo:skill, or just the skill name if it's unique")
+    rj.add_argument("--undo", action="store_true", help="take the rejection back")
     rm = sub.add_parser("remove", help="uninstall a skill skillscout installed")
     rm.add_argument("id", help="its id or skill name, as `installed` lists it")
     rm.add_argument("--force", action="store_true", help="delete it even if you edited it since install")
@@ -134,7 +137,7 @@ def main(argv: list[str] | None = None) -> None:
         rows = core.dedupe([c for c in cands if a.all or c["relevance"] > 0])[: a.n]
         print(f"{'score':5}  {'risk':6}  {'':9}  {'skill':52}  description")
         for c, copies in rows:
-            tag = "installed" if c["installed"] else ("REC" if core.recommended(c, profile) else "")
+            tag = "installed" if c["installed"] else "rejected" if c.get("rejected") else ("REC" if core.recommended(c, profile) else "")
             print(f"{c['score']:.2f}   {core.risk_word(c):6}  {tag:9}  {c['id'] + core.copies_note(copies):52}  {c['description'][:60]}")
     elif a.cmd == "show":
         c = install.ensure_local(core.find(cands, a.id), paths)
@@ -156,6 +159,11 @@ def main(argv: list[str] | None = None) -> None:
         if status != "current" and (on := switch.active(paths)):   # a new skill for an inactive persona stays out of view
             names = [n for n in on if n in persona.personas(profile)]
             say_switch(switch.use(profile, paths, names, core.installed_skills(paths), not names), on, quiet=True)
+    elif a.cmd == "reject":
+        c = core.find(cands, a.id)
+        install.reject(c, paths, a.undo)
+        print(f"{'un-rejected' if a.undo else 'rejected'} {c['id']}; the next `skillscout discover` re-ranks "
+              + ("it as before" if a.undo else "it out and its look-alikes lower"))
     elif a.cmd == "remove":
         cid, dest = install.remove(a.id, paths, a.force)
         print(f"removed {cid} ({dest})")

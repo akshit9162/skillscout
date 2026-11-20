@@ -71,6 +71,21 @@ def reviewed(paths) -> dict[str, str]:
     return read_json(paths.state / "reviewed.json", {})
 
 
+def rejected(paths) -> dict[str, dict]:
+    """id -> the name and description of a skill you said no to. Kept so ranking can push its look-alikes down."""
+    return read_json(paths.state / "rejected.json", {})
+
+
+def reject(c: dict, paths, undo: bool = False) -> None:
+    seen = rejected(paths)
+    if undo:
+        seen.pop(c["id"], None)
+    else:
+        seen[c["id"]] = {"name": c["name"], "description": c["description"],
+                         "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    write_json(paths.state / "rejected.json", seen)
+
+
 def approve(c: dict, paths, accept_risk: bool = False, replace: bool = False, fetch=None,
             expect: str | None = None) -> tuple[Path, str]:
     """Copy one skill into the skills folder and pin it. With `fetch`, the skill is fetched and re-scanned here

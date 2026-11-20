@@ -704,3 +704,47 @@ def test_relevance_skips_what_a_skill_says_it_does_not_do():
     assert relevance("Does not deploy Kubernetes, but writes Helm charts.", kw)[1] == ["helm"]
     assert relevance("Not to be used for: Helm.", kw)[1] == []
 
+
+def test_combined_moves_star_weight_to_measured_effectiveness():
+    from skillscout.score import combined
+    # No benchmark yet: the formula is unchanged.
+    assert combined(1.0, 1.0, 1.0, False) == 1.0 and combined(0.0, 1.0, 0.0, False) == 0.2
+    # With a benchmark result, stars keep a sliver and the measured effect takes the rest.
+    assert combined(0.0, 1.0, 0.0, False, effectiveness=0.0) == 0.05
+    assert combined(0.0, 0.0, 0.0, False, effectiveness=1.0) == 0.15
+
+
+def test_feedback_pulls_toward_kept_skills_and_away_from_rejected_ones():
+    from skillscout.score import feedback, tokens
+    kept = [tokens("Write pytest tests for Python services")]
+    rejected = [tokens("Generate Instagram captions and hashtags")]
+    assert feedback("Write pytest tests for Python APIs", kept, rejected, 0.35) > 0
+    assert feedback("Instagram captions and hashtags for brands", kept, rejected, 0.35) < 0
+    assert feedback("Plan a garden", kept, rejected, 0.35) == 0
+    # Rejecting weighs more than keeping: one bad pick should not come back near the top.
+    assert abs(feedback("Generate Instagram captions and hashtags", [], rejected, 0.35)) > \
+        feedback("Write pytest tests for Python services", kept, [], 0.35)
+
+
+def test_diversify_keeps_near_copies_from_crowding_the_top():
+    from skillscout.score import diversify
+    c = lambda i, s, d: {"id": i, "score": s, "name": i, "description": d}
+    items = [c("pg1", 0.9, "Postgres query tuning and indexes"), c("pg2", 0.89, "Postgres query tuning and index advice"),
+             c("pg3", 0.88, "Postgres query tuning indexes explained"), c("k8s", 0.8, "Deploy services to Kubernetes")]
+    order = [x["id"] for x in diversify(items, top=3)]
+    assert order[0] == "pg1" and order.index("k8s") < order.index("pg3") and sorted(order) == sorted(x["id"] for x in items)
+    assert [x["id"] for x in diversify(items, top=3, weight=0)] == ["pg1", "pg2", "pg3", "k8s"]  # off: plain score order
+
+
+def test_rejected_skill_is_not_recommended_and_similar_ones_drop(env):
+    paths, gh = env
+    before = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert core.recommended(before["gst-eval"], PROFILE)
+    install.reject(before["gst-eval"], paths)
+    after = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert after["gst-eval"]["rejected"] and not core.recommended(after["gst-eval"], PROFILE)
+    assert after["rl-helper"]["score"] < before["rl-helper"]["score"]     # near the rejected one, so pushed down
+    install.reject(after["gst-eval"], paths, undo=True)
+    again = {c["name"]: c for c in core.discover(PROFILE, paths, fetch=gh)}
+    assert core.recommended(again["gst-eval"], PROFILE) and again["gst-eval"]["score"] == before["gst-eval"]["score"]
+    assert all(0 <= c["score"] <= 1 for c in again.values())
